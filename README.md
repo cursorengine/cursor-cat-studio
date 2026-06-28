@@ -138,3 +138,36 @@ The secret token is created the first time you copy a link for that client.
 ### Files to upload for v2
 `config.js`, `brand.css`, `docs.js`, `portal.html`, `intake.html`, `sign.html`
 (plus the updated `index.html` and both logo PNGs).
+
+---
+
+## v3 — automations, notifications, file uploads, activity
+
+### One-time setup
+**Re-run `supabase_setup.sql`** again (still idempotent). v3 adds: the `activity`
+table, real-time on `activity`/`payments`, a `client-uploads` storage bucket, file
+support on clients, and upgraded functions (auto-advance, activity logging, view
+tracking). Then re-upload the updated `index.html`, `intake.html`, `portal.html`,
+and `sign.html`.
+
+### What's new
+- **Auto counter-signature** — the instant a client signs, your signature + date are
+  stamped automatically; the document shows both signatures as fully executed.
+- **Auto-advance to "Signed"** — once both proposal and agreement are signed, the
+  client's stage moves to Signed on its own.
+- **Auto-log payments on stage change** — move a client to *Deposit Paid* and the
+  deposit logs itself; *Active* or *Closed* logs the balance. Pulled from the contract
+  numbers, never double-logged.
+- **Dashboard tab** — a Dashboard button in the top bar opens the overview any time.
+- **Real-time notification bell** — lights up live (no refresh) when a client signs,
+  completes intake, views their portal, or pays. Click it to see the feed; opening it
+  marks items read. The Dashboard also shows a Recent Activity list.
+- **Auto-reminders** — clients who haven't signed/done intake within 2 days surface in
+  the bell and on the Dashboard.
+- **Client file uploads** — clients can attach their logo + job photos in the intake
+  form; files land in Supabase storage and on the client record.
+- **"Viewed" tracking** — you get notified when a client opens their portal or a doc.
+- **Revenue CSV export** — the Dashboard has a "Revenue CSV" button.
+
+### Re-upload for v3
+The updated `index.html`, `intake.html`, `portal.html`, `sign.html` — and re-run the SQL.

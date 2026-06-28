@@ -26,5 +26,5 @@ function render(d){
 }
 if(!sb){fail('This portal is not configured yet. (config.js needs the Supabase URL and key.)');}
 else if(!TOKEN){fail();}
-else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else render(res.data);});}
+else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else{render(res.data);sb.rpc('log_view',{p_token:TOKEN,p_what:'portal'});}});}
 </script></body></html>

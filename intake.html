@@ -10,7 +10,8 @@ function render(d){
   h+='<div class="fgrp"><h3>Business basics</h3>'+
     fieldHTML('contact_name','Your name + best cell')+fieldHTML('phone','Phone')+fieldHTML('email','Email')+
     fieldHTML('website','Website (if you have one)')+fieldHTML('gbp_url','Google Business Profile (if any)')+
-    fieldHTML('service_areas','Cities / areas you service')+fieldHTML('top_services','Top 3 services by revenue',null,true)+'</div>';
+    fieldHTML('service_areas','Cities / areas you service')+fieldHTML('top_services','Top 3 services by revenue',null,true)+
+    '<div class="field"><label>Logo + job photos (optional)</label><input id="files" type="file" multiple accept="image/*" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:var(--font-b)"/><div class="note">Add your logo and a few real job photos so we can use them on your site.</div></div>'+'</div>';
   h+='<div class="fgrp"><h3>Goals &amp; context</h3>'+
     fieldHTML('avg_job_value','Average job value')+fieldHTML('target_jobs','New jobs per month that would make this worth it')+
     fieldHTML('competitor','Top competitor (name + site)')+
@@ -22,18 +23,21 @@ function render(d){
   gel('send').addEventListener('click',submit);
 }
 function v(id){var e=gel(id);return e?e.value.trim():'';}
-function submit(){
+async function submit(){
+  gel('send').setAttribute('disabled','');gel('msg').textContent='Uploading…';
   var notes='Accounts: '+v('q_access')+'\nCurrent leads: '+v('q_leads')+'\nExtra: '+v('q_more');
+  var urls=[];var fl=gel('files')?gel('files').files:[];
+  for(var i=0;i<fl.length;i++){var f=fl[i];var path=TOKEN+'/'+Date.now()+'_'+i+'_'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    try{var up=await sb.storage.from('client-uploads').upload(path,f);if(!up.error){urls.push(sb.storage.from('client-uploads').getPublicUrl(path).data.publicUrl);}}catch(e){}}
   var data={contact_name:v('contact_name'),phone:v('phone'),email:v('email'),website:v('website'),gbp_url:v('gbp_url'),
     service_areas:v('service_areas'),top_services:v('top_services'),avg_job_value:v('avg_job_value'),
-    target_jobs:v('target_jobs'),competitor:v('competitor'),notes:notes};
-  gel('send').setAttribute('disabled','');gel('msg').textContent='Sending…';
-  sb.rpc('submit_intake',{p_token:TOKEN,p_data:data}).then(function(res){
-    if(res.error||!res.data){gel('msg').textContent='Something went wrong — please try again.';gel('send').removeAttribute('disabled');return;}
-    gel('root').innerHTML='<div class="big-ok"><div class="ic">✓</div><h2>That is everything — thank you!</h2><p>I have got your intake. I will be in touch to book your kick-off call within 48 hours.</p><a class="btn ghost" style="margin-top:18px" href="portal.html?t='+encodeURIComponent(TOKEN)+'">Back to your portal</a></div>';
-  });
+    target_jobs:v('target_jobs'),competitor:v('competitor'),notes:notes,files:urls};
+  gel('msg').textContent='Sending…';
+  var res=await sb.rpc('submit_intake',{p_token:TOKEN,p_data:data});
+  if(res.error||!res.data){gel('msg').textContent='Something went wrong — please try again.';gel('send').removeAttribute('disabled');return;}
+  gel('root').innerHTML='<div class="big-ok"><div class="ic">✓</div><h2>That is everything — thank you!</h2><p>I have got your intake'+(urls.length?' and '+urls.length+' file(s)':'')+'. I will be in touch to book your kick-off call within 48 hours.</p><a class="btn ghost" style="margin-top:18px" href="portal.html?t='+encodeURIComponent(TOKEN)+'">Back to your portal</a></div>';
 }
 if(!sb){fail('This intake is not configured yet.');}
 else if(!TOKEN){fail();}
-else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else render(res.data);});}
+else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else{render(res.data);sb.rpc('log_view',{p_token:TOKEN,p_what:'intake'});}});}
 </script></body></html>

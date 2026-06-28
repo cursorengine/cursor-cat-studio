@@ -217,6 +217,14 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 .login-msg.err{color:#b42318}.login-msg.ok{color:#1a7f37}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);z-index:300;background:var(--ink);color:#fff;font-size:.88rem;font-weight:500;padding:12px 20px;border-radius:99px;box-shadow:var(--sh);opacity:0;transition:.25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.bell-badge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--accent);color:#fff;font-size:.58rem;font-weight:700;display:grid;place-items:center;font-family:var(--font-m)}
+.bell-panel{position:absolute;top:46px;right:0;width:330px;max-height:440px;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh);z-index:60;padding:8px}
+.bell-item{display:block;padding:11px 12px;border-radius:var(--r);border-bottom:1px solid var(--line-2)}
+.bell-item:last-child{border-bottom:none}
+.bell-item.unread{background:var(--accent-soft)}
+.bell-item .bt{font-size:.88rem;color:var(--ink)}
+.bell-item .bd{font-size:.7rem;color:var(--muted-2);font-family:var(--font-m);margin-top:3px}
+.bell-empty{padding:26px;text-align:center;color:var(--muted-2);font-size:.86rem}
 .hidden{display:none!important}
 
 @media(max-width:860px){.layout{grid-template-columns:1fr}.sidebar{display:none}.sidebar.show{display:flex;position:fixed;inset:68px 0 0;z-index:30}.form-grid,.parties,.sig-grid{grid-template-columns:1fr}.doc{padding:32px 24px}}
@@ -255,7 +263,12 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
       <div class="brand-word"><span class="chrome-text">CURSOR CAT</span><small>STUDIO</small></div>
     </div>
     <div class="top-actions">
+      <button class="btn-ghost btn btn-sm" id="dashBtn">Dashboard</button>
       <button class="btn btn-sm" id="newClientBtn">+ New Client</button>
+      <div style="position:relative">
+        <button class="icon-btn" id="bellBtn" title="Notifications">&#128276;<span id="bellBadge" class="bell-badge hidden">0</span></button>
+        <div id="bellPanel" class="bell-panel hidden"></div>
+      </div>
       <button class="icon-btn" id="settingsBtn" title="Settings">&#9881;</button>
       <button class="icon-btn" id="logoutBtn" title="Sign out">&#8629;</button>
     </div>
@@ -345,7 +358,7 @@ async function loadClients(){
   if(r.error){toast('Load failed: '+r.error.message);return;}
   clients=r.data||[];renderSidebar();
   if(current){current=clients.filter(function(c){return c.id===current.id;})[0]||null;}
-  await loadDashboard();
+  await loadDashboard();await loadActivity();subscribeRealtime();
   if(current&&currentTab==='payments')await loadPayments();
   renderMain();
 }
@@ -396,7 +409,7 @@ async function quickStage(s){
   if(!current||!current.id){if(current){current.stage=s;renderMain();}return;}
   var r=await sb.from('clients').update({stage:s}).eq('id',current.id);
   if(r.error){toast('Update failed');return;}
-  current.stage=s;toast('Moved to '+s);await loadClients();
+  current.stage=s;toast('Moved to '+s);await autoLogPayment(s);await loadClients();
 }
 
 /* ============================ SIDEBAR ============================ */
@@ -531,7 +544,7 @@ function renderProposal(c){
   h+='<div class="sig"><div class="eyebrow">Authorization</div><h2 style="font-size:1.3rem;margin-bottom:10px">Sign to proceed</h2>'+
     '<p style="font-size:.9rem">By signing, both parties agree to the scope, timeline, and investment above. Full terms in the accompanying Service Agreement.</p><div class="sig-grid">'+
     '<div><div class="p">Client</div>'+(c.signed_proposal?signedLn(c.signed_proposal):'<div class="ln"></div><div class="f">Signature</div>')+'<div class="nm">'+esc(c.contact_name||c.business)+'</div><div class="f" style="margin-top:2px">'+esc(c.business)+'</div><div class="mono" style="margin-top:10px">Date: '+(c.signed_proposal?'electronically':'___________')+'</div></div>'+
-    '<div><div class="p">Cursor Cat Digital</div><div class="ln"></div><div class="f">Signature</div><div class="nm">Brent</div><div class="f" style="margin-top:2px">Founder</div><div class="mono" style="margin-top:10px">Date: ___________</div></div>'+
+    '<div><div class="p">Cursor Cat Digital</div>'+(c.signed_proposal?signedLn({name:'Brent',signed_at:c.signed_proposal.signed_at}):'<div class="ln"></div><div class="f">Signature</div>')+'<div class="nm">Brent</div><div class="f" style="margin-top:2px">Founder</div><div class="mono" style="margin-top:10px">Date: '+(c.signed_proposal?'electronically':'___________')+'</div></div>'+
     '</div></div>';
   return h+docFooter();
 }
@@ -557,7 +570,7 @@ function renderAgreement(c){
   h+=clause(10,'Governing Law','<p>Governed by the laws of the Province of Alberta and applicable federal laws of Canada.</p>');
   h+='<div class="sig"><div class="eyebrow">Signatures</div><h2 style="font-size:1.3rem;margin-bottom:10px">Both parties agree</h2><div class="sig-grid">'+
     '<div><div class="p">Client</div>'+(c.signed_agreement?signedLn(c.signed_agreement):'<div class="ln"></div><div class="f">Signature</div>')+'<div class="nm">'+esc(c.contact_name||c.business)+'</div><div class="mono" style="margin-top:10px">Date: '+(c.signed_agreement?'electronically':'___________')+'</div></div>'+
-    '<div><div class="p">Cursor Cat Digital</div><div class="ln"></div><div class="f">Signature</div><div class="nm">Brent</div><div class="mono" style="margin-top:10px">Date: ___________</div></div></div></div>';
+    '<div><div class="p">Cursor Cat Digital</div>'+(c.signed_agreement?signedLn({name:'Brent',signed_at:c.signed_agreement.signed_at}):'<div class="ln"></div><div class="f">Signature</div>')+'<div class="nm">Brent</div><div class="mono" style="margin-top:10px">Date: '+(c.signed_agreement?'electronically':'___________')+'</div></div></div></div>';
   return h+docFooter();
 }
 
@@ -745,18 +758,92 @@ function pipelineValue(){return clients.reduce(function(s,c){return c.stage==='C
 function dashboardHTML(){
   var active=clients.filter(function(c){return ['Deposit Paid','Intake','Kick-off','Active'].indexOf(c.stage)>=0;}).length;
   var todo=clients.filter(function(c){return ['Proposal Sent','Signed','Intake'].indexOf(c.stage)>=0;});
+  var rem=reminders();
   var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">Dashboard</div><div class="ch-meta">Your studio at a glance</div></div>'+
-    '<div class="ch-actions"><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
+    '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
     '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">'+
-      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+'</div>'+
-    '<div class="card"><div class="mono" style="margin-bottom:12px">Needs your attention</div>'+
-      (todo.length?todo.map(function(c){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+c.id+'\')"><div class="ir-label">'+esc(c.business)+' &nbsp;'+stagePill(c.stage)+'</div><div class="v">'+esc(c.total||'')+'</div></div>';}).join(''):'<div class="ir-label">Nothing pending — nice and clean. Click + New Client to add one.</div>')+
+      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+'</div>';
+  if(rem.length){h+='<div class="card" style="border-color:rgba(154,107,0,.45)"><div class="mono" style="margin-bottom:12px;color:#9a6b00">Reminders</div>'+
+    rem.map(function(x){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+x.c.id+'\')"><div class="ir-label">'+esc(x.c.business)+'</div><div class="v" style="color:#9a6b00;font-family:var(--font-b);font-weight:600;font-size:.84rem">'+esc(x.msg)+'</div></div>';}).join('')+'</div>';}
+  h+='<div class="card"><div class="mono" style="margin-bottom:12px">Needs your attention</div>'+
+      (todo.length?todo.map(function(c){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+c.id+'\')"><div class="ir-label">'+esc(c.business)+' &nbsp;'+stagePill(c.stage)+'</div><div class="v">'+esc(c.total||'')+'</div></div>';}).join(''):'<div class="ir-label">Nothing pending — nice and clean.</div>')+
+    '</div>';
+  h+='<div class="card"><div class="mono" style="margin-bottom:12px">Recent activity</div>'+
+      (notifs.length?notifs.slice(0,12).map(function(a){return '<div class="irow"><div class="ir-label">'+esc(a.title||'')+'</div><div class="v" style="font-family:var(--font-m);font-size:.62rem;color:var(--muted-2)">'+esc(timeAgo(a.created_at))+'</div></div>';}).join(''):'<div class="ir-label">No activity yet. Send a client their portal link to get started.</div>')+
     '</div></div>';
   return h;
 }
 
+/* ============================ v3: notifications, automations, activity ============================ */
+var notifs=[], rtChannel=null;
+function timeAgo(ts){if(!ts)return '';var d=(Date.now()-new Date(ts).getTime())/1000;if(d<60)return 'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
+async function loadActivity(){
+  if(demo||!sb){notifs=[];renderBell();return;}
+  var r=await sb.from('activity').select('*').order('created_at',{ascending:false}).limit(40);
+  if(!r.error)notifs=r.data||[];
+  renderBell();
+}
+function unreadCount(){return notifs.filter(function(a){return !a.read;}).length;}
+function renderBell(){var n=unreadCount(),b=$('bellBadge');if(!b)return;if(n>0){b.textContent=n>9?'9+':String(n);b.classList.remove('hidden');}else{b.classList.add('hidden');}}
+function renderBellPanel(){
+  var p=$('bellPanel');
+  p.innerHTML=notifs.length?notifs.slice(0,20).map(function(a){
+    return '<div class="bell-item'+(a.read?'':' unread')+'"'+(a.client_id?' style="cursor:pointer" onclick="selectClient(\''+a.client_id+'\');closeBell()"':'')+'><div class="bt">'+esc(a.title||'')+'</div><div class="bd">'+esc(timeAgo(a.created_at))+'</div></div>';
+  }).join(''):'<div class="bell-empty">No notifications yet.</div>';
+}
+async function toggleBell(){
+  var p=$('bellPanel');
+  if(p.classList.contains('hidden')){
+    renderBellPanel();p.classList.remove('hidden');
+    if(unreadCount()&&!demo&&sb){await sb.from('activity').update({read:true}).eq('read',false);notifs.forEach(function(a){a.read=true;});renderBell();}
+  }else{p.classList.add('hidden');}
+}
+function closeBell(){var p=$('bellPanel');if(p)p.classList.add('hidden');}
+function subscribeRealtime(){
+  if(rtChannel||demo||!sb)return;
+  rtChannel=sb.channel('ccd-activity')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'activity'},function(p){notifs.unshift(p.new);renderBell();toast((p.new.title||'New activity'));if(!current)renderMain();})
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'payments'},function(){loadDashboard().then(function(){if(!current)renderMain();});})
+    .subscribe();
+}
+function reminders(){
+  var out=[],now=Date.now();
+  clients.forEach(function(c){
+    if(['Closed','Active','Kick-off'].indexOf(c.stage)>=0||!c.created_at)return;
+    var age=(now-new Date(c.created_at).getTime())/86400000;
+    if(c.stage==='Proposal Sent'&&!c.signed_proposal&&age>=2)out.push({c:c,msg:'Proposal unsigned · '+Math.floor(age)+'d'});
+    else if((c.stage==='Signed'||c.stage==='Deposit Paid')&&!c.intake_submitted&&age>=2)out.push({c:c,msg:'Intake not done · '+Math.floor(age)+'d'});
+  });
+  return out;
+}
+async function autoLogPayment(stage){
+  if(demo||!current||!current.id)return;
+  var map={'Deposit Paid':{kind:'Deposit',amt:money(current.deposit)},'Active':{kind:'Balance',amt:money(current.balance)},'Closed':{kind:'Balance',amt:money(current.balance)}};
+  var m=map[stage];if(!m||m.amt<=0)return;
+  var ex=await sb.from('payments').select('id').eq('client_id',current.id).eq('kind',m.kind).limit(1);
+  if(ex.data&&ex.data.length)return;
+  var r=await sb.from('payments').insert({client_id:current.id,amount:m.amt,kind:m.kind,note:'Auto-logged on stage change'});
+  if(!r.error){toast('Logged '+m.kind+' '+fmt(m.amt));await loadDashboard();}
+}
+async function exportRevenue(){
+  if(demo||!sb){toast('Connect Supabase first');return;}
+  var r=await sb.from('payments').select('paid_on,amount,kind,note,client_id');
+  if(r.error){toast('Export failed');return;}
+  var byId={};clients.forEach(function(c){byId[c.id]=c.business;});
+  var rows=[['Date','Client','Kind','Amount','Note']];
+  (r.data||[]).sort(function(a,b){return (a.paid_on||'')<(b.paid_on||'')?1:-1;}).forEach(function(p){
+    rows.push([p.paid_on||'',byId[p.client_id]||'',p.kind||'',p.amount,String(p.note||'')]);
+  });
+  var csv=rows.map(function(row){return row.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cursor-cat-revenue.csv';a.click();
+}
+function showDashboard(){current=null;currentTab='details';renderSidebar();renderMain();}
+
 /* ============================ WIRE-UP ============================ */
 $('loginForm').addEventListener('submit',doLogin);
+$('dashBtn').addEventListener('click',showDashboard);
+$('bellBtn').addEventListener('click',function(e){e.stopPropagation();toggleBell();});
+document.addEventListener('click',function(e){var p=$('bellPanel'),b=$('bellBtn');if(p&&!p.classList.contains('hidden')&&!p.contains(e.target)&&b&&!b.contains(e.target))p.classList.add('hidden');});
 $('logoutBtn').addEventListener('click',doLogout);
 $('newClientBtn').addEventListener('click',newClient);
 $('demoBtn').addEventListener('click',enterDemo);
