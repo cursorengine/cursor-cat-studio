@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Sign — Cursor Cat Digital</title><link rel="icon" type="image/png" href="crestcatccdlogo.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap"/><link rel="stylesheet" href="brand.css"/></head><body><div class="topwrap"><div class="top"><img src="navbar-logo.png" alt="Cursor Cat Digital"/><span class="mono">Client Portal</span></div></div><div class="wrap" id="root"><p class="center" style="padding:60px 0">Loading…</p></div><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function lines(raw){return String(raw||'').split('\n').map(function(s){return s.trim();}).filter(Boolean);}
+function pipes(raw){return lines(raw).map(function(l){var i=l.indexOf('|');return i<0?[l.trim(),'']:[l.slice(0,i).trim(),l.slice(i+1).trim()];});}
+function docProposal(c){
+  var gaps=lines(c.gaps_raw),dl=pipes(c.deliverables_raw),tl=pipes(c.timeline_raw),li=pipes(c.line_items_raw);
+  var h='<h2 style="font-size:1.7rem;margin-bottom:8px">Proposal #'+esc(c.proposal_num||'')+'</h2><p style="margin-bottom:18px">Prepared for '+esc(c.business||'')+'.</p>';
+  if(gaps.length){h+='<div class="card"><div class="eyebrow">Where you are at</div>'+gaps.map(function(g){return '<p style="margin-bottom:6px">• '+esc(g)+'</p>';}).join('')+'</div>';}
+  if(dl.length){h+='<div class="card"><div class="eyebrow">What is included</div>'+dl.map(function(d){return '<p style="margin-bottom:8px"><strong style="color:var(--ink);font-family:var(--font-d)">'+esc(d[0])+'</strong><br><span style="font-size:.88rem">'+esc(d[1])+'</span></p>';}).join('')+'</div>';}
+  if(tl.length){h+='<div class="card"><div class="eyebrow">Timeline</div>'+tl.map(function(t){return '<p style="margin-bottom:6px"><strong style="color:var(--accent);font-family:var(--font-m);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase">'+esc(t[0])+'</strong> &nbsp;'+esc(t[1])+'</p>';}).join('')+'</div>';}
+  if(li.length||c.total){h+='<div class="card"><div class="eyebrow">Investment</div>'+li.map(function(x){return '<p style="display:flex;justify-content:space-between;margin-bottom:6px"><span>'+esc(x[0])+'</span><strong style="color:var(--ink)">'+esc(x[1])+'</strong></p>';}).join('')+'<p style="display:flex;justify-content:space-between;border-top:2px solid var(--ink);margin-top:8px;padding-top:10px"><strong style="color:var(--ink)">Total</strong><strong class="chrome-text" style="font-family:var(--font-d);font-size:1.3rem">'+esc(c.total||c.subtotal||'')+'</strong></p></div>';}
+  h+='<div class="dark"><h3>90-day guarantee</h3><p>If you do not see measurable improvement in leads, calls, or rankings within 90 days of launch, we work an additional month at no charge.</p></div>';
+  return h;
+}
+function docAgreement(c){
+  var scope=lines(c.scope_raw);
+  var h='<h2 style="font-size:1.7rem;margin-bottom:8px">Service Agreement #'+esc(c.agreement_num||'')+'</h2><p style="margin-bottom:18px">Between Cursor Cat Digital and '+esc(c.business||'')+'. Plain English, fair to both sides.</p>';
+  function cl(n,t,b){return '<div class="card"><div class="eyebrow">'+n+'. '+esc(t)+'</div>'+b+'</div>';}
+  h+=cl(1,'Scope of Work','<p>Services in Proposal #'+esc(c.proposal_num||'')+(scope.length?':</p>'+scope.map(function(s){return '<p style="margin:4px 0">→ '+esc(s)+'</p>';}).join(''):'.</p>')+'<p style="margin-top:6px">Anything outside this scope is quoted separately first.</p>');
+  h+=cl(2,'Payment','<p>Total '+esc(c.total||c.subtotal||'')+' CAD: 50% deposit ('+esc(c.deposit||'')+') on signing, 50% balance ('+esc(c.balance||'')+') on delivery.</p>');
+  h+=cl(3,'Timeline','<p>Completed within '+esc(c.weeks||'')+' weeks of signed agreement, deposit, intake and access.</p>');
+  h+=cl(4,'Your Responsibilities','<p>Complete intake within 48h, transfer access at kick-off, feedback within 3 business days, supply content within 5 business days.</p>');
+  h+=cl(5,'90-Day Guarantee','<p>No measurable improvement in 90 days → one extra month at no charge. Requires agreed ad spend and no unauthorized changes.</p>');
+  h+=cl(6,'Ownership','<p>On final payment you own all deliverables. We may show the work in our portfolio. All logins are yours.</p>');
+  h+=cl(7,'Confidentiality','<p>Both parties keep proprietary information confidential for 2 years after the engagement.</p>');
+  h+=cl(8,'Termination','<p>Retainers: 14 days notice, no fee. Projects: deposit non-refundable; past 50% progress the full fee applies.</p>');
+  h+=cl(9,'Liability','<p>Liability is capped at fees paid in the prior 30 days. Not liable for algorithm changes or third-party outages.</p>');
+  h+=cl(10,'Governing Law','<p>Governed by the laws of Alberta, Canada.</p>');
+  return h;
+}
+</script><script>var sb=(window.CCD&&window.CCD.url)?window.supabase.createClient(window.CCD.url,window.CCD.key):null;var TOKEN=new URLSearchParams(location.search).get('t')||'';function gel(id){return document.getElementById(id);}
+var DOC=new URLSearchParams(location.search).get('doc')||'proposal';
+function fail(m){gel('root').innerHTML='<div class="card center" style="padding:46px"><h2 style="margin-bottom:8px">Link not found</h2><p>'+esc(m||'This signing link is not valid. Please use the link we emailed you.')+'</p></div>';}
+var sigPad;
+function initPad(cv){var x=cv.getContext('2d'),drawing=false,last=null;x.strokeStyle='#08090a';x.lineWidth=2.2;x.lineCap='round';
+  function pos(e){var r=cv.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return {x:t.clientX-r.left,y:t.clientY-r.top};}
+  function down(e){drawing=true;last=pos(e);e.preventDefault();}
+  function move(e){if(!drawing)return;var p=pos(e);x.beginPath();x.moveTo(last.x,last.y);x.lineTo(p.x,p.y);x.stroke();last=p;cv._used=true;e.preventDefault();}
+  function up(){drawing=false;}
+  cv.addEventListener('mousedown',down);cv.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+  cv.addEventListener('touchstart',down);cv.addEventListener('touchmove',move);cv.addEventListener('touchend',up);
+  return {clear:function(){x.clearRect(0,0,cv.width,cv.height);cv._used=false;},cv:cv};
+}
+function render(d){
+  if(DOC==='agreement'&&d.signed_agreement){return signedScreen('agreement');}
+  if(DOC==='proposal'&&d.signed_proposal){return signedScreen('proposal');}
+  var body=DOC==='agreement'?docAgreement(d):docProposal(d);
+  var title=DOC==='agreement'?'Service Agreement':'Proposal';
+  var h='<div class="eyebrow">'+esc(title)+'</div>'+body+
+    '<div class="card"><h3 style="font-size:1.1rem;margin-bottom:4px">Sign to approve</h3><p class="note" style="margin-bottom:14px">By signing you agree to the '+esc(title.toLowerCase())+' above.</p>'+
+    '<div class="field"><label>Type your full name</label><input id="sname" type="text" placeholder="Jane Smith"/></div>'+
+    '<div class="field"><label>Draw your signature (optional)</label><canvas id="pad" class="sigbox" width="420" height="120" style="width:100%;max-width:420px"></canvas>'+
+    '<button class="btn ghost" id="clr" style="margin-top:8px;align-self:flex-start;padding:8px 14px;font-size:.82rem">Clear</button></div>'+
+    '<button class="btn full" id="sign">Sign &amp; approve →</button><div class="note center" id="msg" style="margin-top:10px"></div></div>';
+  gel('root').innerHTML=h;
+  sigPad=initPad(gel('pad'));
+  gel('clr').addEventListener('click',function(){sigPad.clear();});
+  gel('sign').addEventListener('click',doSign);
+}
+function signedScreen(doc){gel('root').innerHTML='<div class="big-ok"><div class="ic">✓</div><h2>Already signed</h2><p>Your '+doc+' is signed — nothing more to do here.</p><a class="btn ghost" style="margin-top:18px" href="portal.html?t='+encodeURIComponent(TOKEN)+'">Back to your portal</a></div>';}
+function doSign(){
+  var name=gel('sname').value.trim();
+  if(!name){gel('msg').textContent='Please type your name to sign.';return;}
+  var img=(sigPad&&sigPad.cv&&sigPad.cv._used)?sigPad.cv.toDataURL('image/png'):'';
+  gel('sign').setAttribute('disabled','');gel('msg').textContent='Submitting…';
+  sb.rpc('submit_signature',{p_token:TOKEN,p_doc:DOC,p_name:name,p_sig:img}).then(function(res){
+    if(res.error||!res.data){gel('msg').textContent='Something went wrong — please try again.';gel('sign').removeAttribute('disabled');return;}
+    gel('root').innerHTML='<div class="big-ok"><div class="ic">✓</div><h2>Signed — thank you, '+esc(name)+'!</h2><p>That is locked in. Back to your portal for the next step.</p><a class="btn" style="margin-top:18px" href="portal.html?t='+encodeURIComponent(TOKEN)+'">Back to your portal →</a></div>';
+  });
+}
+if(!sb){fail('Signing is not configured yet.');}
+else if(!TOKEN){fail();}
+else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else render(res.data);});}
+</script></body></html>

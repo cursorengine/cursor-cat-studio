@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Intake — Cursor Cat Digital</title><link rel="icon" type="image/png" href="crestcatccdlogo.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap"/><link rel="stylesheet" href="brand.css"/></head><body><div class="topwrap"><div class="top"><img src="navbar-logo.png" alt="Cursor Cat Digital"/><span class="mono">Client Portal</span></div></div><div class="wrap" id="root"><p class="center" style="padding:60px 0">Loading…</p></div><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var sb=(window.CCD&&window.CCD.url)?window.supabase.createClient(window.CCD.url,window.CCD.key):null;var TOKEN=new URLSearchParams(location.search).get('t')||'';function gel(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function fail(m){gel('root').innerHTML='<div class="card center" style="padding:46px"><h2 style="margin-bottom:8px">Link not found</h2><p>'+esc(m||'This intake link is not valid. Please use the link we emailed you.')+'</p></div>';}
+function fieldHTML(id,label,hint,area){return '<div class="field"><label>'+esc(label)+'</label>'+(area?'<textarea id="'+id+'"></textarea>':'<input id="'+id+'" type="text"/>')+(hint?'<div class="note">'+esc(hint)+'</div>':'')+'</div>';}
+function render(d){
+  var h='<div class="eyebrow">New client intake</div><h1 style="font-size:1.9rem;margin-bottom:8px">Tell me about '+esc(d.business||'your business')+'.</h1>'+
+    '<p style="margin-bottom:22px">About 10 minutes. The more detail you give, the faster I can hit the ground running.</p>';
+  h+='<div class="fgrp"><h3>Business basics</h3>'+
+    fieldHTML('contact_name','Your name + best cell')+fieldHTML('phone','Phone')+fieldHTML('email','Email')+
+    fieldHTML('website','Website (if you have one)')+fieldHTML('gbp_url','Google Business Profile (if any)')+
+    fieldHTML('service_areas','Cities / areas you service')+fieldHTML('top_services','Top 3 services by revenue',null,true)+'</div>';
+  h+='<div class="fgrp"><h3>Goals &amp; context</h3>'+
+    fieldHTML('avg_job_value','Average job value')+fieldHTML('target_jobs','New jobs per month that would make this worth it')+
+    fieldHTML('competitor','Top competitor (name + site)')+
+    fieldHTML('q_access','Accounts you have: Google? Facebook? Analytics? Website host / domain registrar?',null,true)+
+    fieldHTML('q_leads','How are you getting leads now?',null,true)+
+    fieldHTML('q_more','Anything else that would help us hit the ground running?',null,true)+'</div>';
+  h+='<button class="btn full" id="send">Send my intake →</button><div class="note center" id="msg" style="margin-top:10px"></div>';
+  gel('root').innerHTML=h;
+  gel('send').addEventListener('click',submit);
+}
+function v(id){var e=gel(id);return e?e.value.trim():'';}
+function submit(){
+  var notes='Accounts: '+v('q_access')+'\nCurrent leads: '+v('q_leads')+'\nExtra: '+v('q_more');
+  var data={contact_name:v('contact_name'),phone:v('phone'),email:v('email'),website:v('website'),gbp_url:v('gbp_url'),
+    service_areas:v('service_areas'),top_services:v('top_services'),avg_job_value:v('avg_job_value'),
+    target_jobs:v('target_jobs'),competitor:v('competitor'),notes:notes};
+  gel('send').setAttribute('disabled','');gel('msg').textContent='Sending…';
+  sb.rpc('submit_intake',{p_token:TOKEN,p_data:data}).then(function(res){
+    if(res.error||!res.data){gel('msg').textContent='Something went wrong — please try again.';gel('send').removeAttribute('disabled');return;}
+    gel('root').innerHTML='<div class="big-ok"><div class="ic">✓</div><h2>That is everything — thank you!</h2><p>I have got your intake. I will be in touch to book your kick-off call within 48 hours.</p><a class="btn ghost" style="margin-top:18px" href="portal.html?t='+encodeURIComponent(TOKEN)+'">Back to your portal</a></div>';
+  });
+}
+if(!sb){fail('This intake is not configured yet.');}
+else if(!TOKEN){fail();}
+else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else render(res.data);});}
+</script></body></html>

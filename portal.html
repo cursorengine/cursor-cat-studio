@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Welcome — Cursor Cat Digital</title><link rel="icon" type="image/png" href="crestcatccdlogo.png"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap"/><link rel="stylesheet" href="brand.css"/></head><body><div class="topwrap"><div class="top"><img src="navbar-logo.png" alt="Cursor Cat Digital"/><span class="mono">Client Portal</span></div></div><div class="wrap" id="root"><p class="center" style="padding:60px 0">Loading your portal…</p></div><canvas id="cfx"></canvas><script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var sb=(window.CCD&&window.CCD.url)?window.supabase.createClient(window.CCD.url,window.CCD.key):null;var TOKEN=new URLSearchParams(location.search).get('t')||'';function gel(id){return document.getElementById(id);}
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function fail(m){gel('root').innerHTML='<div class="card center" style="padding:46px"><h2 style="margin-bottom:8px">Link not found</h2><p>'+esc(m||'This portal link is not valid. Please use the link we emailed you, or contact brent@cursorcat.digital.')+'</p></div>';}
+function confetti(){var cv=gel('cfx'),x=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;var P=[],C=['#2f64e6','#1a7f37','#08090a','#7a7c83'];for(var i=0;i<120;i++)P.push({x:Math.random()*cv.width,y:-20-Math.random()*cv.height,r:4+Math.random()*5,c:C[i%4],s:2+Math.random()*3,a:Math.random()*6});var t=0;(function loop(){t++;x.clearRect(0,0,cv.width,cv.height);P.forEach(function(p){p.y+=p.s;p.x+=Math.sin((p.y+p.a)/30);x.fillStyle=p.c;x.fillRect(p.x,p.y,p.r,p.r);});if(t<160)requestAnimationFrame(loop);else x.clearRect(0,0,cv.width,cv.height);})();}
+function render(d){
+  var steps=[
+    {k:'proposal',t:'Review & sign your proposal',done:d.signed_proposal,go:'sign.html?doc=proposal&t='+encodeURIComponent(TOKEN)},
+    {k:'agreement',t:'Sign your service agreement',done:d.signed_agreement,go:'sign.html?doc=agreement&t='+encodeURIComponent(TOKEN)},
+    {k:'intake',t:'Complete your intake form',done:d.intake_submitted,go:'intake.html?t='+encodeURIComponent(TOKEN)}
+  ];
+  var doneN=steps.filter(function(s){return s.done;}).length, pct=Math.round(doneN/steps.length*100);
+  var h='<div class="hero"><img src="navbar-logo.png" alt="Cursor Cat Digital"/><div class="mono">Your onboarding</div>'+
+    '<h1>Welcome, '+esc(d.business||'')+'.</h1><p>'+(d.goal?'Our shared goal: '+esc(d.goal)+'.':'Let us get your phone ringing.')+'</p></div>';
+  h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><strong style="font-family:var(--font-d)">Your progress</strong><span class="mono">'+pct+'% complete</span></div><div class="prog"><i style="width:'+pct+'%"></i></div></div>';
+  h+='<div class="steps">'+steps.map(function(s){
+    return '<div class="step'+(s.done?' done':'')+'"><div class="ck">'+(s.done?'✓':'')+'</div><div><div class="t">'+esc(s.t)+'</div><div class="d">'+(s.done?'Done — thank you':'Tap to complete')+'</div></div><a class="btn '+(s.done?'done':'')+' go" href="'+s.go+'">'+(s.done?'View':'Start')+'</a></div>';
+  }).join('')+'</div>';
+  if(d.start_week){h+='<div class="muted-card">🚀 Your build kicks off '+esc(d.start_week)+'.</div>';}
+  h+='<div class="dark"><h3>Questions any time?</h3><p style="font-family:var(--font-m);font-size:.8rem;line-height:2">brent@cursorcat.digital &nbsp;·&nbsp; 587-986-3069</p></div>';
+  if(doneN===steps.length){h+='<div class="muted-card center"><strong>You are all set 🎉</strong> Everything is in. I will be in touch to kick things off.</div>';}
+  gel('root').innerHTML=h+'';
+  gel('root').insertAdjacentHTML('beforeend','<div class="foot">CURSOR CAT DIGITAL · brent@cursorcat.digital · cursorcat.digital</div>');
+  if(doneN===steps.length)confetti();
+}
+if(!sb){fail('This portal is not configured yet. (config.js needs the Supabase URL and key.)');}
+else if(!TOKEN){fail();}
+else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else render(res.data);});}
+</script></body></html>

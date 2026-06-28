@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Cursor Cat Studio — Client & Onboarding Hub</title>
-<link rel="icon" type="image/png" href="cat-icon.png"/>
+<link rel="icon" type="image/png" href="crestcatccdlogo.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap"/>
@@ -234,7 +234,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 <!-- LOGIN -->
 <div class="login-wrap" id="login">
   <div class="login-card">
-    <img class="cat" src="cat-icon.png" alt="Cursor Cat"/>
+    <img class="cat" src="crestcatccdlogo.png" alt="Cursor Cat"/>
     <div class="word">CURSOR CAT<small>STUDIO</small></div>
     <form id="loginForm" autocomplete="on">
       <div class="field"><label>Email</label><input type="email" id="loginEmail" required/></div>
@@ -251,7 +251,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 <div id="app" class="hidden">
   <div class="topbar">
     <div class="brand">
-      <img src="cat-icon.png" alt="Cursor Cat"/>
+      <img src="crestcatccdlogo.png" alt="Cursor Cat"/>
       <div class="brand-word"><span class="chrome-text">CURSOR CAT</span><small>STUDIO</small></div>
     </div>
     <div class="top-actions">
@@ -286,6 +286,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 
 <div class="toast" id="toast"></div>
 
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
@@ -300,7 +301,7 @@ var STAGE_COLOR={
   'Intake':['#fff2da','#9a6b00'],'Kick-off':['#fff2da','#9a6b00'],
   'Active':['#e3f3ea','#1a7f37'],'Closed':['#eef0f3','#7a7c83']
 };
-var DOC_TABS=[['details','Details'],['proposal','Proposal'],['agreement','Agreement'],['welcome','Welcome'],['intake','Intake'],['invoice','Invoice']];
+var DOC_TABS=[['details','Details'],['proposal','Proposal'],['agreement','Agreement'],['welcome','Welcome'],['intake','Intake'],['invoice','Invoice'],['payments','Payments']];
 
 /* ============================ HELPERS ============================ */
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -312,7 +313,7 @@ function stagePill(s){var c=STAGE_COLOR[s]||['#eef0f3','#4d4f54'];return '<span 
 function val(id){var e=$(id);return e?e.value:'';}
 
 /* ============================ SUPABASE / AUTH ============================ */
-function getCfg(){return {url:localStorage.getItem(SB_URL_K)||'',key:localStorage.getItem(SB_KEY_K)||''};}
+function getCfg(){return {url:localStorage.getItem(SB_URL_K)||(window.CCD&&window.CCD.url)||'',key:localStorage.getItem(SB_KEY_K)||(window.CCD&&window.CCD.key)||''};}
 function initSb(){
   var c=getCfg();
   if(!c.url||!c.key){openSettings(true);return false;}
@@ -344,6 +345,8 @@ async function loadClients(){
   if(r.error){toast('Load failed: '+r.error.message);return;}
   clients=r.data||[];renderSidebar();
   if(current){current=clients.filter(function(c){return c.id===current.id;})[0]||null;}
+  await loadDashboard();
+  if(current&&currentTab==='payments')await loadPayments();
   renderMain();
 }
 function blankClient(){
@@ -354,7 +357,8 @@ function blankClient(){
     proposal_num:'CCD-'+pad,agreement_num:'CCD-SA-'+pad,invoice_num:'CCD-INV-'+pad,packet_num:'CCD-WP-'+pad,
     doc_date:new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}),
     subtotal:'',tax_label:'GST (5%)',tax:'',total:'',deposit:'',balance:'',weeks:'6',
-    gaps_raw:'',deliverables_raw:'',timeline_raw:'',line_items_raw:'',scope_raw:''};
+    gaps_raw:'',deliverables_raw:'',timeline_raw:'',line_items_raw:'',scope_raw:'',
+    portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null};
 }
 function newClient(){current=blankClient();currentTab='details';renderSidebar();renderMain();}
 var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',
@@ -421,28 +425,27 @@ function selectClient(id){current=clients.filter(function(c){return c.id===id;})
 /* ============================ MAIN ============================ */
 function renderMain(){
   var m=$('main');
-  if(!current){
-    m.innerHTML='<div class="main-empty"><div><img class="cat" src="cat-icon.png"/><h2>Pick a client, or start a new one.</h2><p>Everything — proposal, agreement, welcome packet, intake, invoice — fills itself in from one place. Then export to PDF.</p></div></div>';
-    return;
-  }
+  if(!current){ m.innerHTML=dashboardHTML(); return; }
   var c=current;
   var head='<div class="client-head"><div class="ch-top"><div>'+
     '<div class="ch-name">'+esc(c.business||'New client')+'</div>'+
     '<div class="ch-meta">'+esc([c.contact_name,c.city?c.city+', Alberta':''].filter(Boolean).join(' · ')||'Unsaved')+'</div></div>'+
     '<div class="ch-actions">'+stageSelect(c)+
-      (currentTab!=='details'?'<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button>':'<button class="btn btn-sm" onclick="saveClient()">Save</button>')+
+      ((c.id&&!demo)?'<button class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal link</button>':'')+
+      ((currentTab!=='details'&&currentTab!=='payments')?'<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button>':'')+
+      (currentTab==='details'?'<button class="btn btn-sm" onclick="saveClient()">Save</button>':'')+
       '<button class="btn-ghost btn btn-sm btn-danger" onclick="deleteClient()">Delete</button>'+
     '</div></div>'+
     '<div class="tabs">'+DOC_TABS.map(function(t){return '<button class="tab'+(currentTab===t[0]?' active':'')+'" onclick="setTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div></div>';
-  var body='<div class="tab-body">'+(currentTab==='details'?detailsForm(c):docPreview(c))+'</div>';
-  m.innerHTML=head+body;
+  var inner=currentTab==='details'?detailsForm(c):(currentTab==='payments'?renderPayments(c):docPreview(c));
+  m.innerHTML=head+'<div class="tab-body">'+inner+'</div>';
   m.scrollTop=0;
 }
 function stageSelect(c){
   return '<select onchange="quickStage(this.value)" style="font-family:var(--font-m);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;padding:8px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink)">'+
     STAGES.map(function(s){return '<option'+(c.stage===s?' selected':'')+'>'+esc(s)+'</option>';}).join('')+'</select>';
 }
-function setTab(t){currentTab=t;renderMain();}
+function setTab(t){currentTab=t;if(t==='payments'){loadPayments().then(renderMain);}else{renderMain();}}
 
 /* ---------- details form ---------- */
 function fld(label,key,c,o){o=o||{};var v=c[key]||'';
@@ -455,6 +458,7 @@ function fld(label,key,c,o){o=o||{};var v=c[key]||'';
 function gh(t){return '<div class="group-h"><span class="mono">'+esc(t)+'</span></div>';}
 function detailsForm(c){
   return '<div class="form-grid">'+
+    ((c.id&&!demo)?'<div class="group-h" style="margin-top:0"><span class="mono">Client share links</span></div><div class="field full" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button></div>':'')+
     gh('Who')+
     fld('Business name','business',c)+fld('Contact name','contact_name',c)+
     fld('City','city',c)+fld('Email','email',c)+
@@ -465,6 +469,7 @@ function detailsForm(c){
     fld('Proposal #','proposal_num',c)+fld('Agreement #','agreement_num',c)+
     fld('Invoice #','invoice_num',c)+fld('Packet #','packet_num',c)+
     gh('Money')+
+    '<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="applyPreset()">⚡ Load preset for this offer</button><span class="hint">Fills pricing, line items, deliverables, timeline &amp; scope from the selected offer.</span></div>'+
     fld('Subtotal','subtotal',c,{ph:'$4,500'})+fld('Total','total',c,{ph:'$4,725'})+
     fld('Tax label','tax_label',c)+fld('Tax','tax',c,{ph:'$225'})+
     fld('Deposit','deposit',c,{ph:'$2,250'})+fld('Balance','balance',c,{ph:'$2,250'})+
@@ -486,7 +491,7 @@ function detailsForm(c){
 
 /* ============================ DOCUMENT RENDERERS ============================ */
 function docHeader(label,id,date){
-  return '<div class="doc-header"><div class="doc-word"><img src="cat-icon.png"/><div><span class="chrome-text">CURSOR CAT</span><small>DIGITAL</small></div></div>'+
+  return '<div class="doc-header"><img src="navbar-logo.png" alt="Cursor Cat Digital" style="height:40px;width:auto"/>'+
     '<div class="doc-meta"><div class="mono">'+esc(label)+'</div><div class="id">'+(id?'#'+esc(id):'')+'</div><div class="mono" style="margin-top:3px">'+esc(date||'')+'</div></div></div>';
 }
 function docFooter(){return '<div class="doc-foot"><span class="chrome-text" style="font-family:var(--font-d);font-weight:700;font-size:.9rem">CURSOR CAT</span><span>brent@cursorcat.digital · 587-986-3069 · cursorcat.digital</span></div>';}
@@ -525,7 +530,7 @@ function renderProposal(c){
     '<div class="dark"><h3>Results or we make it right</h3><p>If you don’t see measurable improvement in leads, calls, or rankings within 90 days of launch — we work an additional month at no charge. No fine print. We earn your business every month.</p></div></div>';
   h+='<div class="sig"><div class="eyebrow">Authorization</div><h2 style="font-size:1.3rem;margin-bottom:10px">Sign to proceed</h2>'+
     '<p style="font-size:.9rem">By signing, both parties agree to the scope, timeline, and investment above. Full terms in the accompanying Service Agreement.</p><div class="sig-grid">'+
-    '<div><div class="p">Client</div><div class="ln"></div><div class="f">Signature</div><div class="nm">'+esc(c.contact_name||c.business)+'</div><div class="f" style="margin-top:2px">'+esc(c.business)+'</div><div class="mono" style="margin-top:10px">Date: ___________</div></div>'+
+    '<div><div class="p">Client</div>'+(c.signed_proposal?signedLn(c.signed_proposal):'<div class="ln"></div><div class="f">Signature</div>')+'<div class="nm">'+esc(c.contact_name||c.business)+'</div><div class="f" style="margin-top:2px">'+esc(c.business)+'</div><div class="mono" style="margin-top:10px">Date: '+(c.signed_proposal?'electronically':'___________')+'</div></div>'+
     '<div><div class="p">Cursor Cat Digital</div><div class="ln"></div><div class="f">Signature</div><div class="nm">Brent</div><div class="f" style="margin-top:2px">Founder</div><div class="mono" style="margin-top:10px">Date: ___________</div></div>'+
     '</div></div>';
   return h+docFooter();
@@ -551,7 +556,7 @@ function renderAgreement(c){
   h+=clause(9,'Limitation of Liability','<p>Total liability shall not exceed fees paid in the 30 days prior to any claim. Not liable for algorithm changes, third-party outages, or factors outside our control.</p>');
   h+=clause(10,'Governing Law','<p>Governed by the laws of the Province of Alberta and applicable federal laws of Canada.</p>');
   h+='<div class="sig"><div class="eyebrow">Signatures</div><h2 style="font-size:1.3rem;margin-bottom:10px">Both parties agree</h2><div class="sig-grid">'+
-    '<div><div class="p">Client</div><div class="ln"></div><div class="f">Signature</div><div class="nm">'+esc(c.contact_name||c.business)+'</div><div class="mono" style="margin-top:10px">Date: ___________</div></div>'+
+    '<div><div class="p">Client</div>'+(c.signed_agreement?signedLn(c.signed_agreement):'<div class="ln"></div><div class="f">Signature</div>')+'<div class="nm">'+esc(c.contact_name||c.business)+'</div><div class="mono" style="margin-top:10px">Date: '+(c.signed_agreement?'electronically':'___________')+'</div></div>'+
     '<div><div class="p">Cursor Cat Digital</div><div class="ln"></div><div class="f">Signature</div><div class="nm">Brent</div><div class="mono" style="margin-top:10px">Date: ___________</div></div></div></div>';
   return h+docFooter();
 }
@@ -629,6 +634,125 @@ function exportPDF(){
     html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
     jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
     pagebreak:{mode:['css','legacy']}}).from(node).save();
+}
+
+/* ============================ v2: links, presets, payments, dashboard ============================ */
+function money(s){var n=parseFloat(String(s||'').replace(/[^0-9.]/g,''));return isNaN(n)?0:n;}
+function fmt(n){return '$'+(Math.round(n*100)/100).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function rid(n){n=n||28;var a='abcdefghijklmnopqrstuvwxyz0123456789',s='',b=new Uint8Array(n);if(window.crypto&&crypto.getRandomValues){crypto.getRandomValues(b);}else{for(var j=0;j<n;j++)b[j]=Math.floor(Math.random()*256);}for(var i=0;i<n;i++)s+=a[b[i]%a.length];return s;}
+function siteBase(){return location.href.split('#')[0].replace(/[^/]*$/,'');}
+function signedLn(sig){var d=sig&&sig.signed_at?new Date(sig.signed_at).toLocaleDateString('en-CA'):'';return (sig&&sig.image?'<img src="'+sig.image+'" style="height:44px;display:block;margin-bottom:4px"/>':'<div class="nm" style="font-size:1.2rem;margin-bottom:4px">'+esc(sig.name||'')+'</div>')+'<div class="f" style="color:#1a7f37">✓ Signed electronically '+esc(d)+'</div>';}
+function metric(label,value){return '<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--sh-sm)"><div class="mono" style="margin-bottom:6px">'+esc(label)+'</div><div class="chrome-text" style="font-family:var(--font-d);font-weight:700;font-size:1.5rem">'+esc(value)+'</div></div>';}
+
+async function ensureToken(){
+  if(demo){toast('Demo mode — save a real client to get share links');return null;}
+  if(!current||!current.id){toast('Save the client first');return null;}
+  if(current.portal_token)return current.portal_token;
+  var t=rid(28);
+  var r=await sb.from('clients').update({portal_token:t}).eq('id',current.id);
+  if(r.error){toast('Could not create link: '+r.error.message);return null;}
+  current.portal_token=t;return t;
+}
+async function copyLink(kind){
+  var t=await ensureToken();if(!t)return;
+  var page=kind==='intake'?'intake.html?':kind==='proposal'?'sign.html?doc=proposal&':kind==='agreement'?'sign.html?doc=agreement&':'portal.html?';
+  var url=siteBase()+page+'t='+encodeURIComponent(t);
+  try{await navigator.clipboard.writeText(url);toast(kind.charAt(0).toUpperCase()+kind.slice(1)+' link copied');}
+  catch(e){prompt('Copy this link:',url);}
+}
+
+var PRESETS={
+  'Local Lead Engine':{subtotal:'$4,500',total:'$4,725',tax:'$225',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',
+    line_items_raw:'Website Design & Build | $2,500\nGBP Optimization & Citations | $500\nGoogle Ads Setup & Management | $1,500\nConversion Tracking | Included',
+    deliverables_raw:'Website Design & Build | 5-page lead-generating site, mobile-first, built to convert.\nGoogle Business Profile Setup | Categories, photos, Q&A, review templates.\nCitation Cleanup | NAP consistency across 20+ directories.\nGoogle Ads Campaign | 2 ad groups, conversion tracking wired to your phone.\nConversion Tracking | GA4 + call and form tracking.',
+    timeline_raw:'Week 1 | Kick-off, access transfer, wireframe review.\nWeek 2-3 | Website build, GBP optimization, citation cleanup.\nWeek 4 | Ads launch, tracking live, first leads.\nWeek 5-6 | Final review, handoff, 30-day support.',
+    scope_raw:'Website design and development (5-page site)\nGoogle Business Profile optimization\nCitation audit and cleanup\nGoogle Ads campaign setup and 30-day management\nConversion tracking via GA4'},
+  'Audit Sprint':{subtotal:'$750',total:'$750',tax:'',deposit:'$750',balance:'$0',weeks:'1',
+    line_items_raw:'5-Day Audit Sprint | $750',
+    deliverables_raw:'Online Presence Audit | Website, GBP, ads, and competitor review.\nAction Plan | Prioritized fixes with projected impact.\nDebrief Call | 30-minute walkthrough of findings.',
+    timeline_raw:'Day 1-2 | Audit website, GBP, ads, competitors.\nDay 3-4 | Build the action plan.\nDay 5 | Debrief call and next-step proposal.',
+    scope_raw:'Online presence audit\nCompetitor comparison\nPrioritized action plan\n30-minute debrief call'},
+  'Local Dominance':{subtotal:'$1,500',total:'$1,500',tax:'',deposit:'$1,500',balance:'$0',weeks:'4',
+    line_items_raw:'Monthly Management Retainer | $1,500/mo',
+    deliverables_raw:'Google Ads Management | Weekly optimization toward booked jobs.\nLocal SEO | Ongoing GBP posts, reviews, citations.\nReporting | Monthly performance report.\nDirect Access | Text or email Brent any time.',
+    timeline_raw:'Weekly | Optimization and check-in.\nMonthly | Performance report and strategy call.',
+    scope_raw:'Google Ads management\nLocal SEO and GBP management\nMonthly reporting\nMonth-to-month, cancel any time'},
+  'Free Strategy Plan':{subtotal:'$0',total:'$0',tax:'',deposit:'$0',balance:'$0',weeks:'1',
+    line_items_raw:'Free Strategy Plan | $0',
+    deliverables_raw:'Strategy Call | 20-minute discovery.\nQuick Plan | 2-3 highest-impact moves.',
+    timeline_raw:'Day 1 | 20-minute strategy call.',
+    scope_raw:'20-minute discovery call\nHigh-level action plan'}
+};
+function applyPreset(){
+  var off=val('f_offer')||current.offer;var p=PRESETS[off];if(!p){toast('No preset for this offer');return;}
+  Object.keys(p).forEach(function(k){var e=$('f_'+k);if(e)e.value=p[k];});
+  toast('Loaded '+off+' preset — review and Save');
+}
+
+var payments=[];
+async function loadPayments(){
+  payments=[];
+  if(demo||!current||!current.id||!sb)return;
+  var r=await sb.from('payments').select('*').eq('client_id',current.id).order('paid_on',{ascending:false});
+  if(!r.error)payments=r.data||[];
+}
+async function addPayment(){
+  if(!current||!current.id){toast('Save the client first');return;}
+  var amt=val('pay_amt'),kind=val('pay_kind'),on=val('pay_on'),note=val('pay_note');
+  if(!money(amt)){toast('Enter an amount');return;}
+  var rec={client_id:current.id,amount:money(amt),kind:kind,note:note};
+  if(on)rec.paid_on=on;
+  var r=await sb.from('payments').insert(rec);
+  if(r.error){toast('Save failed: '+r.error.message);return;}
+  toast('Payment logged');await loadPayments();await loadDashboard();renderMain();
+}
+async function delPayment(id){
+  if(!confirm('Delete this payment?'))return;
+  var r=await sb.from('payments').delete().eq('id',id);
+  if(r.error){toast('Delete failed');return;}
+  await loadPayments();await loadDashboard();renderMain();
+}
+function renderPayments(c){
+  if(demo)return '<p class="note">Payments tracking needs a saved client. Connect Supabase and add a real client.</p>';
+  if(!c.id)return '<p class="note">Save this client first, then you can log payments here.</p>';
+  var paid=payments.reduce(function(s,p){return s+Number(p.amount||0);},0);
+  var due=money(c.total)-paid;
+  var rows=payments.length?payments.map(function(p){
+    return '<div class="irow"><div class="ir-label">'+esc(p.paid_on||'')+' · '+esc(p.kind||'')+(p.note?' — '+esc(p.note):'')+'</div><div class="v" style="display:flex;gap:12px;align-items:center">'+fmt(Number(p.amount||0))+'<button class="btn-ghost btn btn-sm btn-danger" onclick="delPayment(\''+p.id+'\')">×</button></div></div>';
+  }).join(''):'<div class="irow"><div class="ir-label">No payments logged yet.</div><div></div></div>';
+  return '<div style="max-width:760px">'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">'+
+      metric('Invoice total',fmt(money(c.total)))+metric('Collected',fmt(paid))+metric('Outstanding',fmt(due<0?0:due))+'</div>'+
+    '<div class="invest" style="margin-bottom:18px">'+rows+'</div>'+
+    '<div class="card"><div class="mono" style="margin-bottom:12px">Log a payment</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+
+      '<input id="pay_amt" placeholder="Amount e.g. 2362.50" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/>'+
+      '<select id="pay_kind" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"><option>Deposit</option><option>Balance</option><option>Retainer</option><option>Other</option></select>'+
+      '<input id="pay_on" type="date" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/>'+
+    '</div>'+
+    '<input id="pay_note" placeholder="Note (optional)" style="width:100%;margin-top:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/>'+
+    '<button class="btn" style="margin-top:12px" onclick="addPayment()">+ Add payment</button></div></div>';
+}
+
+var allPaymentsTotal=0;
+async function loadDashboard(){
+  allPaymentsTotal=0;
+  if(demo||!sb)return;
+  var r=await sb.from('payments').select('amount');
+  if(!r.error&&r.data)allPaymentsTotal=r.data.reduce(function(s,p){return s+Number(p.amount||0);},0);
+}
+function pipelineValue(){return clients.reduce(function(s,c){return c.stage==='Closed'?s:s+money(c.total);},0);}
+function dashboardHTML(){
+  var active=clients.filter(function(c){return ['Deposit Paid','Intake','Kick-off','Active'].indexOf(c.stage)>=0;}).length;
+  var todo=clients.filter(function(c){return ['Proposal Sent','Signed','Intake'].indexOf(c.stage)>=0;});
+  var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">Dashboard</div><div class="ch-meta">Your studio at a glance</div></div>'+
+    '<div class="ch-actions"><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
+    '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">'+
+      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+'</div>'+
+    '<div class="card"><div class="mono" style="margin-bottom:12px">Needs your attention</div>'+
+      (todo.length?todo.map(function(c){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+c.id+'\')"><div class="ir-label">'+esc(c.business)+' &nbsp;'+stagePill(c.stage)+'</div><div class="v">'+esc(c.total||'')+'</div></div>';}).join(''):'<div class="ir-label">Nothing pending — nice and clean. Click + New Client to add one.</div>')+
+    '</div></div>';
+  return h;
 }
 
 /* ============================ WIRE-UP ============================ */
