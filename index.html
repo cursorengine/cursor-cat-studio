@@ -228,6 +228,17 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 .menu-btn{display:none}
 @media(max-width:860px){.menu-btn{display:grid}.sidebar.show{box-shadow:var(--sh)}}
 @media(max-width:640px){#dashBtn{display:none}.topbar{padding:0 14px}.top-actions{gap:7px}.tab-body{padding:18px 14px}.bell-panel{width:min(320px,92vw)}.client-head{padding:16px 16px}.brand img{height:30px}.doc{padding:26px 18px}}
+.linkbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.acc{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-sm)}
+.acc-h{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;background:none;border:0;font-family:var(--font-d);font-weight:700;font-size:1rem;color:var(--ink);padding:15px 18px;text-align:left}
+.acc-h:hover{color:var(--accent)}
+.acc-h .chev{font-family:var(--font-d);font-size:1.4rem;line-height:1;color:var(--muted-2);font-weight:400;flex-shrink:0}
+.acc-body{display:none;padding:2px 18px 18px}
+.acc-body.open{display:block}
+.acc .form-grid{max-width:none}
+.tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{height:0}
+@media(max-width:640px){.tabs{flex-wrap:nowrap;padding-bottom:6px}.tab{flex:0 0 auto}}
 .hidden{display:none!important}
 
 @media(max-width:860px){.layout{grid-template-columns:1fr}.sidebar{display:none}.sidebar.show{display:flex;position:fixed;inset:68px 0 0;z-index:30}.form-grid,.parties,.sig-grid{grid-template-columns:1fr}.doc{padding:32px 24px}}
@@ -381,7 +392,7 @@ function blankClient(){
     portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null,pay_link:''};
 }
 function newClient(){current=blankClient();currentTab='details';renderSidebar();renderMain();}
-var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',
+var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',pay_link:'https://buy.stripe.com/test_demo',
 gaps_raw:'Google Business Profile has 4 reviews and no photos; your top competitor averages 40+.\nWebsite loads in 7 seconds on mobile — visitors leave before they call.\nNot in the map pack for "plumber Calgary" — where 70% of local clicks go.',
 deliverables_raw:'Website Design & Build | 5-page lead-generating site, mobile-first, built to convert.\nGoogle Business Profile Setup | Full optimization: categories, photos, Q&A, review templates.\nCitation Cleanup | NAP consistency across 20+ directories.\nGoogle Ads Campaign | 2 ad groups, conversion tracking wired to your phone.\nDirect Access to Brent | You text the person doing the work.',
 timeline_raw:'Week 1 | Kick-off call, access transfer, wireframe review.\nWeek 2-3 | Website build, GBP optimization, citation cleanup.\nWeek 4 | Ads launch, conversion tracking live, first leads.\nWeek 5-6 | Final review, handoff, 30-day support begins.',
@@ -476,37 +487,18 @@ function fld(label,key,c,o){o=o||{};var v=c[key]||'';
   return '<div class="field'+(o.full?' full':'')+'"><label>'+esc(label)+'</label>'+input+(o.hint?'<span class="hint">'+esc(o.hint)+'</span>':'')+'</div>';
 }
 function gh(t){return '<div class="group-h"><span class="mono">'+esc(t)+'</span></div>';}
+var accState=null;
+function toggleAcc(k){var b=document.getElementById('acc-'+k);if(!b)return;var open=b.classList.toggle('open');if(accState)accState[k]=open;var ch=document.getElementById('chev-'+k);if(ch)ch.textContent=open?'–':'+';}
 function detailsForm(c){
-  return '<div class="form-grid">'+
-    ((c.id&&!demo)?'<div class="group-h" style="margin-top:0"><span class="mono">Client links &amp; send</span></div><div class="field full" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'portal\')">✉ Email portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'proposal\')">✉ Email proposal</button></div>':'')+
-    gh('Who')+
-    fld('Business name','business',c)+fld('Contact name','contact_name',c)+
-    fld('City','city',c)+fld('Email','email',c)+
-    fld('Phone','phone',c)+fld('Offer','offer',c,{type:'select',opts:OFFERS})+
-    fld('Pipeline stage','stage',c,{type:'select',opts:STAGES})+fld('Goal (used in welcome packet)','goal',c)+
-    gh('Document meta')+
-    fld('Date','doc_date',c)+fld('Start week (welcome)','start_week',c,{ph:'the week of July 7'})+
-    fld('Proposal #','proposal_num',c)+fld('Agreement #','agreement_num',c)+
-    fld('Invoice #','invoice_num',c)+fld('Packet #','packet_num',c)+
-    gh('Money')+
-    '<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="applyPreset()">⚡ Load preset for this offer</button><span class="hint">Fills pricing, line items, deliverables, timeline &amp; scope from the selected offer.</span></div>'+
-    fld('Subtotal','subtotal',c,{ph:'$4,500'})+fld('Total','total',c,{ph:'$4,725'})+
-    fld('Tax label','tax_label',c)+fld('Tax','tax',c,{ph:'$225'})+
-    fld('Deposit','deposit',c,{ph:'$2,250'})+fld('Balance','balance',c,{ph:'$2,250'})+
-    fld('Timeline (weeks)','weeks',c)+fld('Payment link (paste a Stripe Payment Link)','pay_link',c,{full:true,ph:'https://buy.stripe.com/...'})+
-    gh('Proposal / Agreement blocks')+
-    '<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="copyAIPrompt()">✨ Copy AI brief prompt</button><span class="hint">Copies a prompt to paste into Claude / ChatGPT; paste its answer back into the boxes below.</span></div>'+
-    fld('Gaps — one per line','gaps_raw',c,{type:'area',full:true,big:90,hint:'Each line becomes a “what’s holding you back” item.'})+
-    fld('Deliverables — "Title | Description" per line','deliverables_raw',c,{type:'area',full:true,big:110})+
-    fld('Timeline — "Week | Description" per line','timeline_raw',c,{type:'area',full:true,big:90})+
-    fld('Line items — "Label | Value" per line','line_items_raw',c,{type:'area',full:true,big:90,hint:'Drives the proposal investment table and the invoice.'})+
-    fld('Scope — one per line (agreement)','scope_raw',c,{type:'area',full:true,big:90})+
-    gh('Intake context')+
-    fld('Website','website',c)+fld('Google Business Profile','gbp_url',c)+
-    fld('Service areas','service_areas',c)+fld('Top services','top_services',c)+
-    fld('Avg job value','avg_job_value',c)+fld('Target jobs / mo','target_jobs',c)+
-    fld('Top competitor','competitor',c)+fld('Notes','notes',c,{type:'area',full:true})+
-    '</div>'+
+  if(accState===null){var wide=window.innerWidth>860;accState={who:true,meta:wide,money:wide,blocks:wide,intake:wide};}
+  function sec(key,title,body){var open=accState[key];return '<section class="acc"><button type="button" class="acc-h" onclick="toggleAcc(\''+key+'\')">'+esc(title)+'<span class="chev" id="chev-'+key+'">'+(open?'–':'+')+'</span></button><div class="acc-body'+(open?' open':'')+'" id="acc-'+key+'"><div class="form-grid">'+body+'</div></div></section>';}
+  var links=(c.id&&!demo)?'<div class="linkbar"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'portal\')">✉ Email portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'proposal\')">✉ Email proposal</button></div>':'';
+  var who=fld('Business name','business',c)+fld('Contact name','contact_name',c)+fld('City','city',c)+fld('Email','email',c)+fld('Phone','phone',c)+fld('Offer','offer',c,{type:'select',opts:OFFERS})+fld('Pipeline stage','stage',c,{type:'select',opts:STAGES})+fld('Goal (used in welcome packet)','goal',c);
+  var meta=fld('Date','doc_date',c)+fld('Start week (welcome)','start_week',c,{ph:'the week of July 7'})+fld('Proposal #','proposal_num',c)+fld('Agreement #','agreement_num',c)+fld('Invoice #','invoice_num',c)+fld('Packet #','packet_num',c);
+  var money='<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="applyPreset()">⚡ Load preset for this offer</button><span class="hint">Fills pricing, line items, deliverables, timeline &amp; scope from the selected offer.</span></div>'+fld('Subtotal','subtotal',c,{ph:'$4,500'})+fld('Total','total',c,{ph:'$4,725'})+fld('Tax label','tax_label',c)+fld('Tax','tax',c,{ph:'$225'})+fld('Deposit','deposit',c,{ph:'$2,250'})+fld('Balance','balance',c,{ph:'$2,250'})+fld('Timeline (weeks)','weeks',c)+fld('Payment link (paste a Stripe Payment Link)','pay_link',c,{full:true,ph:'https://buy.stripe.com/...'});
+  var blocks='<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="copyAIPrompt()">✨ Copy AI brief prompt</button><span class="hint">Copies a prompt to paste into Claude / ChatGPT; paste its answer back into the boxes below.</span></div>'+fld('Gaps — one per line','gaps_raw',c,{type:'area',full:true,big:90,hint:'Each line becomes a “what’s holding you back” item.'})+fld('Deliverables — "Title | Description" per line','deliverables_raw',c,{type:'area',full:true,big:110})+fld('Timeline — "Week | Description" per line','timeline_raw',c,{type:'area',full:true,big:90})+fld('Line items — "Label | Value" per line','line_items_raw',c,{type:'area',full:true,big:90,hint:'Drives the proposal investment table and the invoice.'})+fld('Scope — one per line (agreement)','scope_raw',c,{type:'area',full:true,big:90});
+  var intake=fld('Website','website',c)+fld('Google Business Profile','gbp_url',c)+fld('Service areas','service_areas',c)+fld('Top services','top_services',c)+fld('Avg job value','avg_job_value',c)+fld('Target jobs / mo','target_jobs',c)+fld('Top competitor','competitor',c)+fld('Notes','notes',c,{type:'area',full:true});
+  return links+sec('who','Who',who)+sec('meta','Document meta',meta)+sec('money','Money',money)+sec('blocks','Proposal / Agreement blocks',blocks)+sec('intake','Intake context',intake)+
     '<div class="save-bar"><button class="btn-ghost btn" onclick="renderMain()">Cancel</button><button class="btn" onclick="saveClient()">Save client</button></div>';
 }
 
@@ -772,7 +764,7 @@ function dashboardHTML(){
     '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
     '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px">'+
       metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+'</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:22px"><div class="card"><div class="mono" style="margin-bottom:10px">Revenue by month</div><canvas id="chRev" style="height:190px"></canvas></div><div class="card"><div class="mono" style="margin-bottom:10px">Pipeline by stage</div><canvas id="chPipe" style="height:190px"></canvas></div></div>';
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:22px"><div class="card"><div class="mono" style="margin-bottom:10px">Revenue by month</div><div style="position:relative;height:200px"><canvas id="chRev"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Pipeline by stage</div><div style="position:relative;height:200px"><canvas id="chPipe"></canvas></div></div></div>';
   if(rem.length){h+='<div class="card" style="border-color:rgba(154,107,0,.45)"><div class="mono" style="margin-bottom:12px;color:#9a6b00">Reminders</div>'+
     rem.map(function(x){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+x.c.id+'\')"><div class="ir-label">'+esc(x.c.business)+'</div><div class="v" style="color:#9a6b00;font-family:var(--font-b);font-weight:600;font-size:.84rem">'+esc(x.msg)+'</div></div>';}).join('')+'</div>';}
   h+='<div class="card"><div class="mono" style="margin-bottom:12px">Needs your attention</div>'+
