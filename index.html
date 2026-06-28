@@ -225,6 +225,9 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 .bell-item .bt{font-size:.88rem;color:var(--ink)}
 .bell-item .bd{font-size:.7rem;color:var(--muted-2);font-family:var(--font-m);margin-top:3px}
 .bell-empty{padding:26px;text-align:center;color:var(--muted-2);font-size:.86rem}
+.menu-btn{display:none}
+@media(max-width:860px){.menu-btn{display:grid}.sidebar.show{box-shadow:var(--sh)}}
+@media(max-width:640px){#dashBtn{display:none}.topbar{padding:0 14px}.top-actions{gap:7px}.tab-body{padding:18px 14px}.bell-panel{width:min(320px,92vw)}.client-head{padding:16px 16px}.brand img{height:30px}.doc{padding:26px 18px}}
 .hidden{display:none!important}
 
 @media(max-width:860px){.layout{grid-template-columns:1fr}.sidebar{display:none}.sidebar.show{display:flex;position:fixed;inset:68px 0 0;z-index:30}.form-grid,.parties,.sig-grid{grid-template-columns:1fr}.doc{padding:32px 24px}}
@@ -258,9 +261,12 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 <!-- APP -->
 <div id="app" class="hidden">
   <div class="topbar">
-    <div class="brand">
-      <img src="crestcatccdlogo.png" alt="Cursor Cat"/>
-      <div class="brand-word"><span class="chrome-text">CURSOR CAT</span><small>STUDIO</small></div>
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <button class="icon-btn menu-btn" id="menuBtn" title="Menu">&#9776;</button>
+      <div class="brand" id="brandHome" style="cursor:pointer">
+        <img src="crestcatccdlogo.png" alt="Cursor Cat"/>
+        <div class="brand-word"><span class="chrome-text">CURSOR CAT</span><small>STUDIO</small></div>
+      </div>
     </div>
     <div class="top-actions">
       <button class="btn-ghost btn btn-sm" id="dashBtn">Dashboard</button>
@@ -302,6 +308,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 /* ============================ CONFIG / STATE ============================ */
 var SB_URL_K='ccd_sb_url', SB_KEY_K='ccd_sb_key';
@@ -314,7 +321,7 @@ var STAGE_COLOR={
   'Intake':['#fff2da','#9a6b00'],'Kick-off':['#fff2da','#9a6b00'],
   'Active':['#e3f3ea','#1a7f37'],'Closed':['#eef0f3','#7a7c83']
 };
-var DOC_TABS=[['details','Details'],['proposal','Proposal'],['agreement','Agreement'],['welcome','Welcome'],['intake','Intake'],['invoice','Invoice'],['payments','Payments']];
+var DOC_TABS=[['details','Details'],['proposal','Proposal'],['agreement','Agreement'],['welcome','Welcome'],['intake','Intake'],['invoice','Invoice'],['project','Project'],['payments','Payments']];
 
 /* ============================ HELPERS ============================ */
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -371,7 +378,7 @@ function blankClient(){
     doc_date:new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}),
     subtotal:'',tax_label:'GST (5%)',tax:'',total:'',deposit:'',balance:'',weeks:'6',
     gaps_raw:'',deliverables_raw:'',timeline_raw:'',line_items_raw:'',scope_raw:'',
-    portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null};
+    portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null,pay_link:''};
 }
 function newClient(){current=blankClient();currentTab='details';renderSidebar();renderMain();}
 var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',
@@ -386,7 +393,7 @@ async function saveClient(){
   var f=['business','contact_name','city','email','phone','offer','stage','website','gbp_url','service_areas',
     'top_services','avg_job_value','target_jobs','competitor','notes','goal','start_week','proposal_num',
     'agreement_num','invoice_num','packet_num','doc_date','subtotal','tax_label','tax','total','deposit',
-    'balance','weeks','gaps_raw','deliverables_raw','timeline_raw','line_items_raw','scope_raw'];
+    'balance','weeks','gaps_raw','deliverables_raw','timeline_raw','line_items_raw','scope_raw','pay_link'];
   var rec={};f.forEach(function(k){var e=$('f_'+k);if(e)rec[k]=e.value;});
   if(!rec.business){toast('Business name is required');return;}
   if(demo){Object.assign(current,rec);toast('Demo mode — not saved to database');renderSidebar();renderMain();return;}
@@ -433,24 +440,24 @@ function renderSidebar(){
       '<div class="cl-sub">'+esc([c.contact_name,c.city].filter(Boolean).join(' · ')||c.offer||'')+'</div></div>';
   }).join('');
 }
-function selectClient(id){current=clients.filter(function(c){return c.id===id;})[0]||null;currentTab='details';renderSidebar();renderMain();}
+function selectClient(id){current=clients.filter(function(c){return c.id===id;})[0]||null;currentTab='details';var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
 
 /* ============================ MAIN ============================ */
 function renderMain(){
   var m=$('main');
-  if(!current){ m.innerHTML=dashboardHTML(); return; }
+  if(!current){ m.innerHTML=dashboardHTML(); setTimeout(drawDashCharts,0); return; }
   var c=current;
   var head='<div class="client-head"><div class="ch-top"><div>'+
     '<div class="ch-name">'+esc(c.business||'New client')+'</div>'+
     '<div class="ch-meta">'+esc([c.contact_name,c.city?c.city+', Alberta':''].filter(Boolean).join(' · ')||'Unsaved')+'</div></div>'+
     '<div class="ch-actions">'+stageSelect(c)+
       ((c.id&&!demo)?'<button class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal link</button>':'')+
-      ((currentTab!=='details'&&currentTab!=='payments')?'<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button>':'')+
+      ((currentTab!=='details'&&currentTab!=='payments'&&currentTab!=='project')?'<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button>':'')+
       (currentTab==='details'?'<button class="btn btn-sm" onclick="saveClient()">Save</button>':'')+
       '<button class="btn-ghost btn btn-sm btn-danger" onclick="deleteClient()">Delete</button>'+
     '</div></div>'+
     '<div class="tabs">'+DOC_TABS.map(function(t){return '<button class="tab'+(currentTab===t[0]?' active':'')+'" onclick="setTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div></div>';
-  var inner=currentTab==='details'?detailsForm(c):(currentTab==='payments'?renderPayments(c):docPreview(c));
+  var inner=currentTab==='details'?detailsForm(c):(currentTab==='payments'?renderPayments(c):(currentTab==='project'?renderProject(c):docPreview(c)));
   m.innerHTML=head+'<div class="tab-body">'+inner+'</div>';
   m.scrollTop=0;
 }
@@ -458,7 +465,7 @@ function stageSelect(c){
   return '<select onchange="quickStage(this.value)" style="font-family:var(--font-m);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;padding:8px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink)">'+
     STAGES.map(function(s){return '<option'+(c.stage===s?' selected':'')+'>'+esc(s)+'</option>';}).join('')+'</select>';
 }
-function setTab(t){currentTab=t;if(t==='payments'){loadPayments().then(renderMain);}else{renderMain();}}
+function setTab(t){currentTab=t;if(t==='payments'){loadPayments().then(renderMain);}else if(t==='project'){loadTasks().then(renderMain);}else{renderMain();}}
 
 /* ---------- details form ---------- */
 function fld(label,key,c,o){o=o||{};var v=c[key]||'';
@@ -471,7 +478,7 @@ function fld(label,key,c,o){o=o||{};var v=c[key]||'';
 function gh(t){return '<div class="group-h"><span class="mono">'+esc(t)+'</span></div>';}
 function detailsForm(c){
   return '<div class="form-grid">'+
-    ((c.id&&!demo)?'<div class="group-h" style="margin-top:0"><span class="mono">Client share links</span></div><div class="field full" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button></div>':'')+
+    ((c.id&&!demo)?'<div class="group-h" style="margin-top:0"><span class="mono">Client links &amp; send</span></div><div class="field full" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'portal\')">✉ Email portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'proposal\')">✉ Email proposal</button></div>':'')+
     gh('Who')+
     fld('Business name','business',c)+fld('Contact name','contact_name',c)+
     fld('City','city',c)+fld('Email','email',c)+
@@ -486,8 +493,9 @@ function detailsForm(c){
     fld('Subtotal','subtotal',c,{ph:'$4,500'})+fld('Total','total',c,{ph:'$4,725'})+
     fld('Tax label','tax_label',c)+fld('Tax','tax',c,{ph:'$225'})+
     fld('Deposit','deposit',c,{ph:'$2,250'})+fld('Balance','balance',c,{ph:'$2,250'})+
-    fld('Timeline (weeks)','weeks',c)+
+    fld('Timeline (weeks)','weeks',c)+fld('Payment link (paste a Stripe Payment Link)','pay_link',c,{full:true,ph:'https://buy.stripe.com/...'})+
     gh('Proposal / Agreement blocks')+
+    '<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="copyAIPrompt()">✨ Copy AI brief prompt</button><span class="hint">Copies a prompt to paste into Claude / ChatGPT; paste its answer back into the boxes below.</span></div>'+
     fld('Gaps — one per line','gaps_raw',c,{type:'area',full:true,big:90,hint:'Each line becomes a “what’s holding you back” item.'})+
     fld('Deliverables — "Title | Description" per line','deliverables_raw',c,{type:'area',full:true,big:110})+
     fld('Timeline — "Week | Description" per line','timeline_raw',c,{type:'area',full:true,big:90})+
@@ -631,7 +639,8 @@ function renderInvoice(c){
     '<div class="tot"><div class="totr"><div>Subtotal</div><div>'+esc(c.subtotal||c.total)+'</div></div>'+
     (c.tax?'<div class="totr"><div>'+esc(c.tax_label)+'</div><div>'+esc(c.tax)+'</div></div>':'')+
     '<div class="totr g"><div class="k">Total Due</div><div class="v chrome-text">'+esc(c.total||c.subtotal)+'</div></div></div>'+
-    '<div class="dark" style="margin-top:30px"><h3>How to pay</h3><p style="color:#fff;font-family:var(--font-m);font-size:.82rem;line-height:2.1">Interac e-Transfer &nbsp;›&nbsp; brent@cursorcat.digital<br>Credit / Debit &nbsp;›&nbsp; pay via the link in your email</p></div>'+
+    '<div class="dark" style="margin-top:30px"><h3>How to pay</h3><p style="color:#fff;font-family:var(--font-m);font-size:.82rem;line-height:2.1">Interac e-Transfer &nbsp;›&nbsp; brent@cursorcat.digital<br>Credit / Debit &nbsp;›&nbsp; pay via the link below</p></div>'+
+    (c.pay_link?'<div style="margin-top:14px"><a class="btn" href="'+esc(c.pay_link)+'" target="_blank" rel="noopener">Pay this invoice online →</a></div>':'')+
     (c.deposit?'<p style="font-size:.85rem;color:var(--muted);margin-top:18px"><strong>Payment schedule:</strong> '+esc(c.deposit)+' deposit due to start. Balance on delivery.</p>':'')+
     '<p style="font-size:.85rem;color:var(--muted);margin-top:6px">Thank you for your business.</p>';
   return h+docFooter();
@@ -734,11 +743,11 @@ function renderPayments(c){
     return '<div class="irow"><div class="ir-label">'+esc(p.paid_on||'')+' · '+esc(p.kind||'')+(p.note?' — '+esc(p.note):'')+'</div><div class="v" style="display:flex;gap:12px;align-items:center">'+fmt(Number(p.amount||0))+'<button class="btn-ghost btn btn-sm btn-danger" onclick="delPayment(\''+p.id+'\')">×</button></div></div>';
   }).join(''):'<div class="irow"><div class="ir-label">No payments logged yet.</div><div></div></div>';
   return '<div style="max-width:760px">'+
-    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">'+
       metric('Invoice total',fmt(money(c.total)))+metric('Collected',fmt(paid))+metric('Outstanding',fmt(due<0?0:due))+'</div>'+
     '<div class="invest" style="margin-bottom:18px">'+rows+'</div>'+
     '<div class="card"><div class="mono" style="margin-bottom:12px">Log a payment</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">'+
       '<input id="pay_amt" placeholder="Amount e.g. 2362.50" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/>'+
       '<select id="pay_kind" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"><option>Deposit</option><option>Balance</option><option>Retainer</option><option>Other</option></select>'+
       '<input id="pay_on" type="date" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/>'+
@@ -747,12 +756,12 @@ function renderPayments(c){
     '<button class="btn" style="margin-top:12px" onclick="addPayment()">+ Add payment</button></div></div>';
 }
 
-var allPaymentsTotal=0;
+var allPaymentsTotal=0, revSeries={};
 async function loadDashboard(){
-  allPaymentsTotal=0;
+  allPaymentsTotal=0;revSeries={};
   if(demo||!sb)return;
-  var r=await sb.from('payments').select('amount');
-  if(!r.error&&r.data)allPaymentsTotal=r.data.reduce(function(s,p){return s+Number(p.amount||0);},0);
+  var r=await sb.from('payments').select('amount,paid_on');
+  if(!r.error&&r.data){r.data.forEach(function(p){var a=Number(p.amount||0);allPaymentsTotal+=a;var m=(p.paid_on||'').slice(0,7)||'—';revSeries[m]=(revSeries[m]||0)+a;});}
 }
 function pipelineValue(){return clients.reduce(function(s,c){return c.stage==='Closed'?s:s+money(c.total);},0);}
 function dashboardHTML(){
@@ -761,8 +770,9 @@ function dashboardHTML(){
   var rem=reminders();
   var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">Dashboard</div><div class="ch-meta">Your studio at a glance</div></div>'+
     '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
-    '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">'+
-      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+'</div>';
+    '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px">'+
+      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:22px"><div class="card"><div class="mono" style="margin-bottom:10px">Revenue by month</div><canvas id="chRev" style="height:190px"></canvas></div><div class="card"><div class="mono" style="margin-bottom:10px">Pipeline by stage</div><canvas id="chPipe" style="height:190px"></canvas></div></div>';
   if(rem.length){h+='<div class="card" style="border-color:rgba(154,107,0,.45)"><div class="mono" style="margin-bottom:12px;color:#9a6b00">Reminders</div>'+
     rem.map(function(x){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+x.c.id+'\')"><div class="ir-label">'+esc(x.c.business)+'</div><div class="v" style="color:#9a6b00;font-family:var(--font-b);font-weight:600;font-size:.84rem">'+esc(x.msg)+'</div></div>';}).join('')+'</div>';}
   h+='<div class="card"><div class="mono" style="margin-bottom:12px">Needs your attention</div>'+
@@ -839,9 +849,85 @@ async function exportRevenue(){
 }
 function showDashboard(){current=null;currentTab='details';renderSidebar();renderMain();}
 
+/* ============================ v4: project tracking + charts ============================ */
+var tasks=[];
+var PHASES=['Phase 1 — Foundation','Phase 2 — GBP + Local SEO','Phase 3 — Ads Launch','Phase 4 — Handoff'];
+var DEFAULT_PLAN=[
+  ['Phase 1 — Foundation','Kick-off call'],['Phase 1 — Foundation','Access transfer'],['Phase 1 — Foundation','Site wireframe + content request'],
+  ['Phase 2 — GBP + Local SEO','GBP optimization'],['Phase 2 — GBP + Local SEO','Citation cleanup'],['Phase 2 — GBP + Local SEO','Review request setup'],
+  ['Phase 3 — Ads Launch','Campaign build'],['Phase 3 — Ads Launch','Conversion tracking'],['Phase 3 — Ads Launch','Launch + confirm leads'],
+  ['Phase 4 — Handoff','Final review'],['Phase 4 — Handoff','Handoff call'],['Phase 4 — Handoff','30-day support starts']
+];
+async function loadTasks(){tasks=[];if(demo||!current||!current.id||!sb)return;var r=await sb.from('tasks').select('*').eq('client_id',current.id).order('sort',{ascending:true});if(!r.error)tasks=r.data||[];}
+async function addTask(){var t=val('task_title'),ph=val('task_phase');if(!t){toast('Enter a task');return;}var r=await sb.from('tasks').insert({client_id:current.id,title:t,phase:ph,sort:tasks.length});if(r.error){toast('Add failed');return;}await loadTasks();renderMain();}
+async function toggleTask(id,d){var r=await sb.from('tasks').update({done:!d}).eq('id',id);if(r.error){toast('Update failed');return;}await loadTasks();renderMain();}
+async function delTask(id){var r=await sb.from('tasks').delete().eq('id',id);if(r.error){toast('Delete failed');return;}await loadTasks();renderMain();}
+async function loadDefaultPlan(){if(!confirm('Add the standard 4-phase plan?'))return;var rows=DEFAULT_PLAN.map(function(p,i){return {client_id:current.id,phase:p[0],title:p[1],sort:i};});var r=await sb.from('tasks').insert(rows);if(r.error){toast('Failed: '+r.error.message);return;}toast('Plan added');await loadTasks();renderMain();}
+function renderProject(c){
+  if(demo)return '<p class="note">Project tracking needs a saved client. Connect Supabase and add a real client.</p>';
+  if(!c.id)return '<p class="note">Save this client first, then plan the project here.</p>';
+  var doneN=tasks.filter(function(t){return t.done;}).length, pct=tasks.length?Math.round(doneN/tasks.length*100):0;
+  var h='<div style="max-width:760px">';
+  h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-family:var(--font-d)">Delivery progress</strong><span class="mono">'+doneN+'/'+tasks.length+' done</span></div><div style="height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:99px"></div></div></div>';
+  if(!tasks.length){h+='<div class="card center" style="padding:30px"><p style="margin-bottom:14px">No tasks yet.</p><button class="btn" onclick="loadDefaultPlan()">Load the 4-phase plan</button></div>';}
+  else{
+    var phs={};tasks.forEach(function(t){(phs[t.phase]=phs[t.phase]||[]).push(t);});
+    Object.keys(phs).forEach(function(ph){
+      h+='<div class="card"><div class="mono" style="margin-bottom:10px">'+esc(ph)+'</div>'+
+        phs[ph].map(function(t){return '<div class="irow"><label class="ir-label" style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" '+(t.done?'checked':'')+' onclick="toggleTask(\''+t.id+'\','+(t.done?'true':'false')+')"/> <span style="'+(t.done?'text-decoration:line-through;color:var(--muted-2)':'')+'">'+esc(t.title)+'</span></label><button class="btn-ghost btn btn-sm btn-danger" onclick="delTask(\''+t.id+'\')">×</button></div>';}).join('')+'</div>';
+    });
+  }
+  h+='<div class="card"><div class="mono" style="margin-bottom:10px">Add a task</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"><input id="task_title" placeholder="Task" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/><select id="task_phase" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)">'+PHASES.map(function(p){return '<option>'+esc(p)+'</option>';}).join('')+'</select></div><button class="btn" style="margin-top:10px" onclick="addTask()">+ Add task</button></div>';
+  return h+'</div>';
+}
+
+var charts={};
+function chartOpts(){return {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:function(v){return '$'+v;}}}}};}
+function drawDashCharts(){
+  if(typeof Chart==='undefined')return;
+  var rc=$('chRev'),pc=$('chPipe');
+  if(charts.rev){charts.rev.destroy();charts.rev=null;}
+  if(charts.pipe){charts.pipe.destroy();charts.pipe=null;}
+  if(rc){
+    var keys=Object.keys(revSeries).sort();
+    charts.rev=new Chart(rc,{type:'bar',data:{labels:keys.length?keys:['No data'],datasets:[{data:keys.length?keys.map(function(k){return revSeries[k];}):[0],backgroundColor:'#2f64e6',borderRadius:4}]},options:chartOpts()});
+  }
+  if(pc){
+    var labels=STAGES.filter(function(s){return s!=='Closed';}),byStage={};
+    labels.forEach(function(s){byStage[s]=0;});
+    clients.forEach(function(c){if(c.stage!=='Closed'&&byStage[c.stage]!=null)byStage[c.stage]+=money(c.total);});
+    charts.pipe=new Chart(pc,{type:'bar',data:{labels:labels,datasets:[{data:labels.map(function(s){return byStage[s]||0;}),backgroundColor:'#08090a',borderRadius:4}]},options:chartOpts()});
+  }
+}
+
+/* ============================ v5: lite send + AI prompt ============================ */
+async function emailLink(kind){
+  var t=await ensureToken();if(!t)return;
+  var page=kind==='intake'?'intake.html?':kind==='proposal'?'sign.html?doc=proposal&':kind==='agreement'?'sign.html?doc=agreement&':'portal.html?';
+  var url=siteBase()+page+'t='+encodeURIComponent(t);
+  var labels={portal:'your onboarding portal',intake:'your intake form',proposal:'your proposal to review and sign',agreement:'your service agreement to sign'};
+  var subj='Cursor Cat Digital — '+(labels[kind]||'your link');
+  var body='Hi '+(current.contact_name||'there')+',\n\nHere is '+(labels[kind]||'your link')+':\n'+url+'\n\nAny questions, just reply.\n\n— Brent\nCursor Cat Digital';
+  location.href='mailto:'+encodeURIComponent(current.email||'')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+}
+function copyAIPrompt(){
+  var c=current||{};
+  var p='You are a senior local-marketing strategist for an Alberta web design and growth studio.\n'+
+    'Client: '+(c.business||'')+' in '+(c.city||'')+'. Website: '+(c.website||'(none)')+'. Top services: '+(c.top_services||'(unknown)')+'. Top competitor: '+(c.competitor||'(unknown)')+'. Offer: '+(c.offer||'')+'.\n\n'+
+    'Write, ready to paste into a CRM:\n'+
+    '1) GAPS - 3 specific things holding them back online (one per line).\n'+
+    '2) DELIVERABLES - 5 lines formatted "Title | Description".\n'+
+    '3) TIMELINE - 4 lines formatted "Week | Description".\n'+
+    '4) Suggested pricing: total and a 50% deposit for the '+(c.offer||'project')+'.\n'+
+    'Be concrete and benefit-focused.';
+  try{navigator.clipboard.writeText(p);toast('AI prompt copied — paste into Claude or ChatGPT');}catch(e){prompt('Copy this prompt:',p);}
+}
+
 /* ============================ WIRE-UP ============================ */
 $('loginForm').addEventListener('submit',doLogin);
 $('dashBtn').addEventListener('click',showDashboard);
+$('menuBtn').addEventListener('click',function(){$('sidebar').classList.toggle('show');});
+$('brandHome').addEventListener('click',function(){showDashboard();$('sidebar').classList.remove('show');});
 $('bellBtn').addEventListener('click',function(e){e.stopPropagation();toggleBell();});
 document.addEventListener('click',function(e){var p=$('bellPanel'),b=$('bellBtn');if(p&&!p.classList.contains('hidden')&&!p.contains(e.target)&&b&&!b.contains(e.target))p.classList.add('hidden');});
 $('logoutBtn').addEventListener('click',doLogout);

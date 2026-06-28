@@ -171,3 +171,65 @@ and `sign.html`.
 
 ### Re-upload for v3
 The updated `index.html`, `intake.html`, `portal.html`, `sign.html` — and re-run the SQL.
+
+---
+
+## v4 — delivery tracking + high-tech dashboard
+
+### One-time setup
+**Re-run `supabase_setup.sql`** (adds the `tasks` table + realtime). Re-upload `index.html`.
+
+### What's new
+- **Project tab** (per client) — plan and track the work by phase. Click **Load the
+  4-phase plan** to drop in the standard Foundation → GBP/SEO → Ads → Handoff checklist,
+  or add your own tasks. A progress bar shows how far along the build is.
+- **Dashboard charts** — the Dashboard now shows **Revenue by month** and **Pipeline by
+  stage** charts (Chart.js), on top of the metric cards, reminders, and activity feed.
+
+### Re-upload for v4
+The updated `index.html` — and re-run the SQL.
+
+---
+
+## Roadmap — features that need a backend (Supabase Edge Functions) + accounts
+
+These three need a small server-side function and your own account/API key. When you're
+ready, set up the account and I'll build the function + wire it into the app:
+
+- **Online payments** — a Stripe account. Adds a "Pay deposit" button on the invoice +
+  portal; a webhook auto-marks paid and logs the payment. (A no-backend "lite" version is
+  possible now: paste a Stripe Payment Link per client + a Pay button, with paid logged on
+  stage change.)
+- **One-click email send** — an email provider (e.g. Resend) API key. Sends the portal /
+  proposal / invoice link from inside the app. (Lite version now: a "Send" button that
+  opens your email client pre-filled.)
+- **AI proposal & audit drafting** — an AI provider API key. Paste a website or call notes
+  and it drafts the gaps, deliverables, and suggested pricing into the client record.
+
+Also queued: client-facing project progress in the portal, recurring retainer billing.
+
+---
+
+## v5 — lite versions (no accounts) + mobile
+
+### One-time setup
+**Re-run `supabase_setup.sql`** (adds a `pay_link` column + updates the portal function).
+Re-upload `index.html` and `portal.html`.
+
+### What's new — all no-account
+- **Lite payments** — on a client's Details tab there's a **Payment link** field. Paste a
+  Stripe Payment Link (you can create those free in Stripe with no code) and a **Pay**
+  button appears on the invoice and on the client's portal. When they pay and you move the
+  stage to Deposit Paid, it still auto-logs the payment.
+- **Lite email send** — **✉ Email portal** / **✉ Email proposal** buttons on the Details
+  tab open your email app with the client's address, a subject, and the link pre-filled.
+  One click to send from your own inbox.
+- **AI brief prompt** — **✨ Copy AI brief prompt** copies a ready-made prompt built from
+  the client's info. Paste it into Claude or ChatGPT, then paste the answer back into the
+  Gaps / Deliverables / Timeline boxes. (Full in-app AI still needs an API key later.)
+- **Mobile** — the top bar now has a menu button that slides the client list in/out, the
+  logo taps back to the Dashboard, and the dashboard / payments / project grids reflow to
+  fit small screens.
+
+### Re-upload for v5
+`index.html`, `portal.html` — and re-run the SQL.

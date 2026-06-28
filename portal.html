@@ -18,6 +18,7 @@ function render(d){
     return '<div class="step'+(s.done?' done':'')+'"><div class="ck">'+(s.done?'✓':'')+'</div><div><div class="t">'+esc(s.t)+'</div><div class="d">'+(s.done?'Done — thank you':'Tap to complete')+'</div></div><a class="btn '+(s.done?'done':'')+' go" href="'+s.go+'">'+(s.done?'View':'Start')+'</a></div>';
   }).join('')+'</div>';
   if(d.start_week){h+='<div class="muted-card">🚀 Your build kicks off '+esc(d.start_week)+'.</div>';}
+  if(d.pay_link){h+='<a class="btn full" style="margin-bottom:14px" href="'+esc(d.pay_link)+'" target="_blank" rel="noopener">Pay your deposit &rarr;</a>';}
   h+='<div class="dark"><h3>Questions any time?</h3><p style="font-family:var(--font-m);font-size:.8rem;line-height:2">brent@cursorcat.digital &nbsp;·&nbsp; 587-986-3069</p></div>';
   if(doneN===steps.length){h+='<div class="muted-card center"><strong>You are all set 🎉</strong> Everything is in. I will be in touch to kick things off.</div>';}
   gel('root').innerHTML=h+'';
