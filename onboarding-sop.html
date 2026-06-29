@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Client Onboarding SOP — Cursor Cat Digital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#d7d9dd;--surface:#fafbfc;--surface-2:#cbced3;
+    --ink:#08090a;--muted:#4d4f54;--muted-2:#7a7c83;
+    --line:rgba(0,0,0,.16);--line-2:rgba(0,0,0,.08);
+    --accent:#2f64e6;
+    --r:8px;--r-lg:12px;
+    --sh:0 1px 2px rgba(0,0,0,.05),0 20px 44px -22px rgba(0,0,0,.22);
+    --font-d:"Space Grotesk",system-ui,sans-serif;
+    --font-b:"Inter",system-ui,sans-serif;
+    --font-m:"JetBrains Mono",ui-monospace,monospace;
+  }
+  body{font-family:var(--font-b);background:var(--bg);color:var(--ink);line-height:1.65;-webkit-font-smoothing:antialiased;max-width:820px;margin:0 auto;padding:60px 40px;font-size:15px}
+  h1,h2,h3{font-family:var(--font-d);font-weight:700;line-height:1.08;letter-spacing:-.025em}
+  p{color:var(--muted);font-size:.95rem}
+
+  .mono{font-family:var(--font-m);font-size:.64rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2)}
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-m);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+  .eyebrow::before{content:"";width:7px;height:7px;background:var(--ink);transform:rotate(45deg);flex-shrink:0}
+
+  /* HEADER */
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:50px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+  .logo-type{font-family:var(--font-d);font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
+  .tagline{font-family:var(--font-m);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);margin-top:4px}
+  .doc-meta{text-align:right}
+  .doc-label{font-family:var(--font-m);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);margin-bottom:4px}
+
+  /* PILLS */
+  .pills{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:48px}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:7px 14px;font-family:var(--font-m);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+  /* LEGEND */
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:36px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+  .tag{font-family:var(--font-m);font-size:.6rem;letter-spacing:.1em;font-weight:600;padding:3px 8px;border-radius:5px;text-transform:uppercase}
+  .tag-you{background:var(--ink);color:#fff}
+  .tag-client{background:#e8f0fe;color:var(--accent)}
+  .tag-both{background:var(--surface-2);color:var(--muted)}
+
+  /* PHASE */
+  .phase{margin-bottom:52px}
+  .phase-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+  .phase-badge{font-family:var(--font-m);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);background:#e8f0fe;border:1px solid rgba(47,100,230,.2);padding:5px 12px;border-radius:100px;font-weight:600}
+  .phase-title{font-family:var(--font-d);font-size:1.25rem;font-weight:700}
+  .phase-timing{font-family:var(--font-m);font-size:.64rem;letter-spacing:.1em;color:var(--muted-2);margin-left:auto}
+
+  /* CHECKLIST */
+  .checklist{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--sh)}
+  .ci{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;border-bottom:1px solid var(--line-2)}
+  .ci:last-child{border-bottom:none}
+  .ci:hover{background:#f4f5f7}
+  .ci-box{width:18px;height:18px;border:1.5px solid var(--line);border-radius:4px;flex-shrink:0;margin-top:2px}
+  .ci-body{flex:1}
+  .ci-text{font-size:.95rem;color:var(--ink)}
+  .ci-text strong{font-weight:600}
+  .ci-note{font-size:.82rem;color:var(--muted-2);margin-top:3px;line-height:1.5}
+  .ci-tag{margin-left:auto;flex-shrink:0;margin-top:1px}
+
+  /* TEMPLATE */
+  .template{background:var(--ink);border-radius:var(--r-lg);padding:24px 26px;margin-top:20px}
+  .tpl-label{font-family:var(--font-m);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:10px}
+  .tpl-subject{font-family:var(--font-d);font-size:.95rem;font-weight:700;color:#fff;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.12)}
+  .tpl-body{font-family:var(--font-b);font-size:.9rem;color:rgba(255,255,255,.75);line-height:1.85;white-space:pre-line}
+
+  /* AGENDA */
+  .agenda{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--sh)}
+  .ag-item{display:flex;gap:16px;align-items:flex-start;padding:16px 20px;border-bottom:1px solid var(--line-2)}
+  .ag-item:last-child{border-bottom:none}
+  .ag-time{font-family:var(--font-m);font-size:.64rem;letter-spacing:.1em;color:var(--accent);font-weight:600;white-space:nowrap;margin-top:2px;min-width:38px}
+  .ag-text{font-size:.95rem;color:var(--muted)}
+  .ag-text strong{color:var(--ink);font-weight:600}
+
+  /* INTAKE TABLE */
+  .intake-wrap{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--sh)}
+  .intake-row{display:flex;gap:14px;padding:13px 20px;border-bottom:1px solid var(--line-2);align-items:flex-start}
+  .intake-row:last-child{border-bottom:none}
+  .i-num{font-family:var(--font-m);font-size:.68rem;font-weight:600;color:var(--accent);min-width:22px;flex-shrink:0;margin-top:2px}
+  .i-q{font-size:.93rem;color:var(--muted)}
+
+  /* DIVIDER */
+  hr{border:none;border-top:1px solid var(--line);margin:52px 0}
+
+  /* FOOTER */
+  .footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .footer-brand{font-family:var(--font-d);font-size:.95rem;font-weight:700}
+  .footer-note{font-family:var(--font-m);font-size:.64rem;letter-spacing:.08em;color:var(--muted-2);text-align:right;line-height:1.9}
+
+  @media print{body{background:#f2f3f5;padding:36px}.template{background:#111}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="logo-type">Cursor Cat Digital</div>
+    <div class="tagline">Get Results. Not Predictions.</div>
+  </div>
+  <div class="doc-meta">
+    <div class="doc-label">Internal SOP</div>
+    <div style="font-family:var(--font-d);font-size:1rem;font-weight:700">Client Onboarding</div>
+  </div>
+</div>
+
+<div class="eyebrow">Standard operating procedure</div>
+<h1 style="font-size:clamp(1.9rem,3.5vw,2.6rem);margin-bottom:12px">Client Onboarding Playbook</h1>
+<p style="font-size:1.05rem;margin-bottom:36px">Follow this for every new client, every time. Consistency is what makes delivery feel effortless — and clients feel like they made the right call.</p>
+
+<div class="pills">
+  <div class="pill">4 Phases</div>
+  <div class="pill">Day 0 → Week 2</div>
+  <div class="pill">All offer tiers</div>
+  <div class="pill">Updated June 2026</div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><span class="tag tag-you">YOU</span> Brent does this</div>
+  <div class="legend-item"><span class="tag tag-client">CLIENT</span> Client does this</div>
+  <div class="legend-item"><span class="tag tag-both">BOTH</span> Done together on call</div>
+</div>
+
+<!-- PHASE 1 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-badge">Phase 1</div>
+    <div class="phase-title">Close & Collect</div>
+    <div class="phase-timing">Day 0 — same day as strategy call</div>
+  </div>
+  <div class="checklist">
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Send proposal within 1 hour of strategy call</strong></div>
+        <div class="ci-note">Use proposal-template.html. Fill their specific gaps from the call. Subject: "Your Proposal — [Business Name]"</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Send Service Agreement alongside proposal</strong></div>
+        <div class="ci-note">Use service-agreement.html. Fill scope, price, timeline. Sign via DocuSign free tier or print + scan.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Client signs and pays deposit</strong></div>
+        <div class="ci-note">E-transfer to brent@cursorcat.digital. Do not start work until deposit confirmed.</div>
+      </div>
+      <span class="tag tag-client ci-tag">CLIENT</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Send "You're in" welcome email</strong></div>
+        <div class="ci-note">See template below. Include intake form link and kick-off booking link.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Add to Notion CRM — move to Closed Won</strong></div>
+        <div class="ci-note">Update stage, contract value, start date, expected delivery date.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+  </div>
+
+  <div class="template">
+    <div class="tpl-label">Welcome Email Template</div>
+    <div class="tpl-subject">Subject: You're in — here's what happens next</div>
+    <div class="tpl-body">Hey [Name],
+
+Payment received — we're officially on. Looking forward to making this work for [Business Name].
+
+Here's what I need from you to get moving:
+
+1. Complete the intake form (takes ~10 min): [FORM LINK]
+2. Book our kick-off call: [CALENDLY LINK]
+
+Once you've done both, I'll review your answers before the call and we'll hit the ground running.
+
+Any questions before then — just reply or text me at 587-986-3069.
+
+— Brent
+Cursor Cat Digital</div>
+  </div>
+</div>
+
+<!-- PHASE 2 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-badge">Phase 2</div>
+    <div class="phase-title">Intake & Access</div>
+    <div class="phase-timing">Day 1–2 — before kick-off call</div>
+  </div>
+  <div class="checklist">
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Client completes intake form</strong></div>
+        <div class="ci-note">17 questions: business basics, existing accounts, goals, competitor info. If not received in 24h, follow up by text.</div>
+      </div>
+      <span class="tag tag-client ci-tag">CLIENT</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Review intake answers before kick-off</strong></div>
+        <div class="ci-note">Highlight anything unclear. Flag missing access. Pull up their GBP and competitor before the call.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Research their top competitor</strong></div>
+        <div class="ci-note">Check GBP reviews, map pack position, website, any visible ads. Bring specifics to kick-off.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 3 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-badge">Phase 3</div>
+    <div class="phase-title">Kick-off Call</div>
+    <div class="phase-timing">Day 2–3 · 30 minutes</div>
+  </div>
+  <div class="agenda" style="margin-bottom:16px">
+    <div class="ag-item"><div class="ag-time">0:00</div><div class="ag-text"><strong>Confirm intake answers</strong> — validate anything unclear from the form.</div></div>
+    <div class="ag-item"><div class="ag-time">0:05</div><div class="ag-text"><strong>Walk through the plan</strong> — what gets built, in what order. Set expectations on timeline and how you communicate.</div></div>
+    <div class="ag-item"><div class="ag-time">0:10</div><div class="ag-text"><strong>Transfer access</strong> — Google account, GBP manager invite, website host, any existing ad accounts. Do this live.</div></div>
+    <div class="ag-item"><div class="ag-time">0:20</div><div class="ag-text"><strong>Set the 90-day goal</strong> — "By [date] we want [X]. Measured by: [metric]." Write it down, send it in your follow-up.</div></div>
+    <div class="ag-item"><div class="ag-time">0:25</div><div class="ag-text"><strong>Comms rhythm</strong> — weekly email update, or text for quick questions? Confirm now.</div></div>
+    <div class="ag-item"><div class="ag-time">0:28</div><div class="ag-text"><strong>Q&A</strong> — surface any concerns now, not in a 10pm text in Week 3.</div></div>
+  </div>
+  <div class="checklist">
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Send kick-off summary email same day</strong></div>
+        <div class="ci-note">Include: 90-day goal, project timeline, how to reach you, date of first update.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Confirm all access is working</strong></div>
+        <div class="ci-note">Log in to everything. If any access failed, follow up within 24h.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Create project folder</strong></div>
+        <div class="ci-note">Google Drive or Notion. Name: [Business Name] — CCD Project. Include: intake responses, signed contract, timeline, working files.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+  </div>
+</div>
+
+<!-- PHASE 4 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-badge">Phase 4</div>
+    <div class="phase-title">Delivery & Rhythm</div>
+    <div class="phase-timing">Week 1 onward</div>
+  </div>
+  <div class="checklist">
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Send progress update every Friday</strong></div>
+        <div class="ci-note">3–5 sentences: what was done, what's next, any decisions needed from them.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Follow up if feedback not received within 3 days</strong></div>
+        <div class="ci-note">One text follow-up. After 5 days with no response, proceed with best judgment and note it in writing.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Monthly retainers: send performance report on the 1st</strong></div>
+        <div class="ci-note">Cover: GBP calls, website sessions, keyword movement, ads CTR/CPL/conversion. Keep it 1 page.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Invoice balance on delivery</strong></div>
+        <div class="ci-note">Projects: final invoice on completion. Retainers: auto-invoice via Wave on 1st.</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Request a Google review at Day 30</strong></div>
+        <div class="ci-note">"Hey [Name] — if we've delivered value so far, a Google review goes a long way. Here's the link: [GBP review URL]"</div>
+      </div>
+      <span class="tag tag-you ci-tag">YOU</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Day 60 check-in on 90-day goal</strong></div>
+        <div class="ci-note">On track? If not, surface it now. Fix issues before Day 90, not after.</div>
+      </div>
+      <span class="tag tag-both ci-tag">BOTH</span>
+    </div>
+    <div class="ci">
+      <div class="ci-box"></div>
+      <div class="ci-body">
+        <div class="ci-text"><strong>Day 90 review + case study ask</strong></div>
+        <div class="ci-note">Pull results. Book 20-min review call. Ask: "Can I share your results as a case study?" Get a video testimonial if results are strong.</div>
+      </div>
+      <span class="tag tag-both ci-tag">BOTH</span>
+    </div>
+  </div>
+</div>
+
+<hr/>
+
+<!-- INTAKE FORM -->
+<div class="eyebrow">Reference</div>
+<h2 style="font-size:1.4rem;margin-bottom:6px">The 17 Intake Questions</h2>
+<p style="margin-bottom:20px">Send via Typeform, Google Form, or Notion form immediately after contract signed.</p>
+<div class="intake-wrap">
+  <div class="intake-row"><div class="i-num">01</div><div class="i-q">Legal business name</div></div>
+  <div class="intake-row"><div class="i-num">02</div><div class="i-q">Primary contact name + cell (for texts)</div></div>
+  <div class="intake-row"><div class="i-num">03</div><div class="i-q">Website URL (if existing)</div></div>
+  <div class="intake-row"><div class="i-num">04</div><div class="i-q">Google Business Profile URL (if existing)</div></div>
+  <div class="intake-row"><div class="i-num">05</div><div class="i-q">What cities/areas do you service?</div></div>
+  <div class="intake-row"><div class="i-num">06</div><div class="i-q">What are your top 3 services by revenue?</div></div>
+  <div class="intake-row"><div class="i-num">07</div><div class="i-q">Do you have a Google account for business? (if yes, share email)</div></div>
+  <div class="intake-row"><div class="i-num">08</div><div class="i-q">Do you have a Facebook Business page?</div></div>
+  <div class="intake-row"><div class="i-num">09</div><div class="i-q">Do you have Google Analytics or Search Console set up?</div></div>
+  <div class="intake-row"><div class="i-num">10</div><div class="i-q">Who is your website host? (if existing site)</div></div>
+  <div class="intake-row"><div class="i-num">11</div><div class="i-q">Do you have a domain registrar login? (GoDaddy, Namecheap, etc.)</div></div>
+  <div class="intake-row"><div class="i-num">12</div><div class="i-q">What does a good lead look like? (job type, job size)</div></div>
+  <div class="intake-row"><div class="i-num">13</div><div class="i-q">What's your average job value?</div></div>
+  <div class="intake-row"><div class="i-num">14</div><div class="i-q">How many new jobs/month would make this worth it?</div></div>
+  <div class="intake-row"><div class="i-num">15</div><div class="i-q">How are you currently getting leads? (word of mouth / Google / referrals / other)</div></div>
+  <div class="intake-row"><div class="i-num">16</div><div class="i-q">Who is your top local competitor? (name + website if known)</div></div>
+  <div class="intake-row"><div class="i-num">17</div><div class="i-q">Anything we should know to hit the ground running?</div></div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-brand">Cursor Cat Digital</div>
+  <div class="footer-note">Internal SOP · Not for client distribution<br>Updated June 2026</div>
+</div>
+
+</body>
+</html>
