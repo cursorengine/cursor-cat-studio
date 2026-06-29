@@ -237,3 +237,173 @@ revoke all on function public.submit_signature(text,text,text,text) from public;
 grant execute on function public.get_portal(text)                     to anon, authenticated;
 grant execute on function public.submit_intake(text,jsonb)            to anon, authenticated;
 grant execute on function public.submit_signature(text,text,text,text) to anon, authenticated;
+
+-- ============================================================================
+-- v3 — activity feed / notifications, file uploads, view tracking, automations
+-- (additive + idempotent)
+-- ============================================================================
+
+alter table public.clients add column if not exists files jsonb;
+
+create table if not exists public.activity (
+  id         uuid primary key default gen_random_uuid(),
+  client_id  uuid references public.clients(id) on delete cascade,
+  type       text,
+  title      text,
+  created_at timestamptz not null default now(),
+  read       boolean default false
+);
+alter table public.activity enable row level security;
+drop policy if exists activity_authenticated_all on public.activity;
+create policy activity_authenticated_all on public.activity
+  for all to authenticated using (true) with check (true);
+create index if not exists activity_created_idx on public.activity (created_at desc);
+
+-- realtime: let the app receive live activity + payment events
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='activity') then
+    alter publication supabase_realtime add table public.activity;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='payments') then
+    alter publication supabase_realtime add table public.payments;
+  end if;
+end $$;
+
+-- storage bucket for client intake uploads (logo, job photos)
+insert into storage.buckets (id, name, public)
+  values ('client-uploads','client-uploads', true)
+  on conflict (id) do nothing;
+drop policy if exists cu_anon_insert on storage.objects;
+create policy cu_anon_insert on storage.objects
+  for insert to anon, authenticated with check (bucket_id = 'client-uploads');
+drop policy if exists cu_public_read on storage.objects;
+create policy cu_public_read on storage.objects
+  for select to anon, authenticated using (bucket_id = 'client-uploads');
+
+-- ---------- RPCs upgraded with activity logging + automations ----------
+
+create or replace function public.submit_signature(p_token text, p_doc text, p_name text, p_sig text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype; sig jsonb;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return false; end if;
+  sig := jsonb_build_object('name', p_name, 'image', p_sig, 'signed_at', now());
+  if p_doc = 'proposal' then
+    update public.clients set signed_proposal = sig where id = r.id;
+  elsif p_doc = 'agreement' then
+    update public.clients set signed_agreement = sig where id = r.id;
+  else
+    return false;
+  end if;
+  insert into public.activity(client_id, type, title)
+    values (r.id, 'signed', coalesce(nullif(r.business,''),'A client')||' signed the '||p_doc);
+  -- auto-advance to Signed once both are signed
+  update public.clients set stage = 'Signed'
+    where id = r.id
+      and signed_proposal is not null and signed_agreement is not null
+      and stage in ('Prospect','Proposal Sent');
+  return true;
+end $$;
+
+create or replace function public.submit_intake(p_token text, p_data jsonb)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return false; end if;
+  update public.clients set
+    contact_name  = coalesce(nullif(p_data->>'contact_name',''), contact_name),
+    phone         = coalesce(nullif(p_data->>'phone',''), phone),
+    email         = coalesce(nullif(p_data->>'email',''), email),
+    website       = coalesce(p_data->>'website', website),
+    gbp_url       = coalesce(p_data->>'gbp_url', gbp_url),
+    service_areas = coalesce(p_data->>'service_areas', service_areas),
+    top_services  = coalesce(p_data->>'top_services', top_services),
+    avg_job_value = coalesce(p_data->>'avg_job_value', avg_job_value),
+    target_jobs   = coalesce(p_data->>'target_jobs', target_jobs),
+    competitor    = coalesce(p_data->>'competitor', competitor),
+    notes         = coalesce(p_data->>'notes', notes),
+    files         = coalesce(p_data->'files', files),
+    intake_submitted = true
+  where id = r.id;
+  insert into public.activity(client_id, type, title)
+    values (r.id, 'intake', coalesce(nullif(r.business,''),'A client')||' completed the intake form');
+  return true;
+end $$;
+
+create or replace function public.log_view(p_token text, p_what text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return false; end if;
+  if not exists (
+    select 1 from public.activity
+     where client_id = r.id and type = 'view' and title like '%'||p_what||'%'
+       and created_at > now() - interval '6 hours'
+  ) then
+    insert into public.activity(client_id, type, title)
+      values (r.id, 'view', coalesce(nullif(r.business,''),'A client')||' viewed the '||p_what);
+  end if;
+  return true;
+end $$;
+
+revoke all on function public.log_view(text,text) from public;
+grant execute on function public.log_view(text,text) to anon, authenticated;
+
+-- ============================================================================
+-- v4 — delivery / project tracking
+-- ============================================================================
+create table if not exists public.tasks (
+  id         uuid primary key default gen_random_uuid(),
+  client_id  uuid references public.clients(id) on delete cascade,
+  phase      text default 'Phase 1',
+  title      text not null default '',
+  done       boolean default false,
+  sort       int default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.tasks enable row level security;
+drop policy if exists tasks_authenticated_all on public.tasks;
+create policy tasks_authenticated_all on public.tasks
+  for all to authenticated using (true) with check (true);
+create index if not exists tasks_client_idx on public.tasks (client_id);
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='tasks') then
+    alter publication supabase_realtime add table public.tasks;
+  end if;
+end $$;
+
+-- ============================================================================
+-- v5 — lite payment link (paste a Stripe Payment Link; no backend needed)
+-- ============================================================================
+alter table public.clients add column if not exists pay_link text;
+
+create or replace function public.get_portal(p_token text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'business',r.business,'contact_name',r.contact_name,'city',r.city,'offer',r.offer,
+    'stage',r.stage,'goal',r.goal,'start_week',r.start_week,'doc_date',r.doc_date,
+    'intake_submitted',r.intake_submitted,
+    'signed_proposal',(r.signed_proposal is not null),
+    'signed_agreement',(r.signed_agreement is not null),
+    'proposal_num',r.proposal_num,'agreement_num',r.agreement_num,
+    'total',r.total,'deposit',r.deposit,'balance',r.balance,'weeks',r.weeks,
+    'subtotal',r.subtotal,'tax_label',r.tax_label,'tax',r.tax,'pay_link',r.pay_link,
+    'gaps_raw',r.gaps_raw,'deliverables_raw',r.deliverables_raw,'timeline_raw',r.timeline_raw,
+    'line_items_raw',r.line_items_raw,'scope_raw',r.scope_raw
+  );
+end $$;
+
+-- ============================================================================
+-- v6 — monthly retainer amount (for MRR tracking)
+-- ============================================================================
+alter table public.clients add column if not exists monthly text;
