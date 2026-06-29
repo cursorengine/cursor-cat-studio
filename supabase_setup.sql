@@ -407,3 +407,21 @@ end $$;
 -- v6 — monthly retainer amount (for MRR tracking)
 -- ============================================================================
 alter table public.clients add column if not exists monthly text;
+
+-- ============================================================================
+-- v7 — weekly leading-indicator log (Growth HQ scoreboard) + growth tasks
+--   (growth tasks reuse the tasks table with client_id = null — no new table)
+-- ============================================================================
+create table if not exists public.weekly_log (
+  id         uuid primary key default gen_random_uuid(),
+  week_start date not null unique,
+  outreach   int default 0,
+  replies    int default 0,
+  calls      int default 0,
+  content    int default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.weekly_log enable row level security;
+drop policy if exists weekly_log_authenticated_all on public.weekly_log;
+create policy weekly_log_authenticated_all on public.weekly_log
+  for all to authenticated using (true) with check (true);

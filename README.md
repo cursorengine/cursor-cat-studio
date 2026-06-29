@@ -257,3 +257,26 @@ Re-upload `index.html` and `portal.html`.
 
 ### Re-upload for v6
 `index.html` — and re-run the SQL.
+
+---
+
+## v7 — Growth HQ built in
+
+### One-time setup
+**Re-run `supabase_setup.sql`** (adds the `weekly_log` table). Re-upload `index.html`.
+
+### What's new (pulled from your Notion Growth HQ)
+- **Scoreboard goals on the Dashboard** — progress bars for your 90-day targets:
+  MRR vs $3,600, Revenue collected vs $15k, Active retainers vs 3.
+- **Weekly inputs tracker** — log your leading indicators (outreach touches 50–75,
+  replies, strategy calls 3–5, content 3) with targets; new leads this week auto-count.
+  "Save week" stores it per week.
+- **Brand voice baked into the AI prompt** — every AI brief now carries your messaging
+  rules (founder-led, sell outcomes, name the number, no buzzwords, anchor the guarantee).
+- **90-Day Growth Plan board** — a personal acquisition task board (separate from client
+  projects). Click **90-Day Plan** on the Dashboard, then "Load the 90-day plan."
+- **Extended pipeline** — added top-of-funnel sales stages (Outreach Sent, Replied,
+  Call Booked) so the board covers outreach → delivery end to end.
+
+### Re-upload for v7
+`index.html` — and re-run the SQL.
