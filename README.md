@@ -233,3 +233,27 @@ Re-upload `index.html` and `portal.html`.
 
 ### Re-upload for v5
 `index.html`, `portal.html` — and re-run the SQL.
+
+---
+
+## v6 — Kanban, command palette, MRR + reporting
+
+### One-time setup
+**Re-run `supabase_setup.sql`** (adds a `monthly` column). Re-upload `index.html`.
+
+### What's new
+- **Pipeline Kanban board** — a **Board** button in the top bar opens a drag-and-drop
+  board. Drag a client between stage columns to move them — and dragging fires the same
+  auto-payment-logging (drop into Deposit Paid → logs the deposit).
+- **Command palette** — press **Ctrl/Cmd + K** anywhere to jump to any client or action
+  (Dashboard, Board, New client). Type to filter, Enter to go.
+- **MRR + reporting on the Dashboard** — new metric cards for **MRR** (from each client's
+  Monthly retainer field), **Avg deal**, and **Win rate**, plus a **Conversion funnel**
+  chart (Leads → Proposal → Signed → Deposit → Active).
+- **Monthly retainers** — set a client's **Monthly retainer** on Details, then click
+  **↻ Log retainers** on the Dashboard to record this month's retainer payments for active
+  retainer clients (skips any already logged this month).
+- **Cleanup** — removed dead code left from earlier refactors; tightened the build.
+
+### Re-upload for v6
+`index.html` — and re-run the SQL.

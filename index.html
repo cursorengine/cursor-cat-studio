@@ -75,10 +75,6 @@ a{color:inherit;text-decoration:none}
 
 /* ---------- main ---------- */
 .main{overflow-y:auto;min-height:0;position:relative}
-.main-empty{height:100%;display:grid;place-items:center;text-align:center;padding:40px}
-.main-empty .cat{width:120px;opacity:.5;margin:0 auto 22px}
-.main-empty h2{font-size:1.5rem;margin-bottom:8px}
-.main-empty p{color:var(--muted);max-width:380px;margin:0 auto}
 .client-head{position:sticky;top:0;z-index:10;background:rgba(215,217,221,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:18px 26px}
 .ch-top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
 .ch-name{font-size:1.5rem}
@@ -99,10 +95,6 @@ a{color:inherit;text-decoration:none}
 .field textarea{resize:vertical;min-height:74px;line-height:1.5;font-size:.88rem}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .field .hint{font-size:.72rem;color:var(--muted-2)}
-.group-h{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:14px 0 2px}
-.group-h:first-child{margin-top:0}
-.group-h .mono{color:var(--accent)}
-.group-h::after{content:"";flex:1;height:1px;background:var(--line)}
 .save-bar{position:sticky;bottom:0;display:flex;justify-content:flex-end;gap:10px;padding:16px 26px;background:rgba(215,217,221,.92);backdrop-filter:blur(8px);border-top:1px solid var(--line);margin:0 -26px -26px}
 
 /* ---------- doc preview ---------- */
@@ -236,6 +228,27 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 .acc-body{display:none;padding:2px 18px 18px}
 .acc-body.open{display:block}
 .acc .form-grid{max-width:none}
+.board{display:flex;gap:12px;overflow-x:auto;padding:20px 26px;min-height:60vh}
+.kcol{flex:0 0 240px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px;min-height:200px;transition:.14s}
+.kcol.drag-over{border-color:var(--accent);background:var(--accent-soft)}
+.kcol-h{font-family:var(--font-m);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);display:flex;justify-content:space-between;align-items:center;padding:6px 8px 10px}
+.kcol-h span{color:var(--ink);font-family:var(--font-d);font-weight:700}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;margin-bottom:8px;box-shadow:var(--sh-sm);cursor:grab}
+.kcard:hover{border-color:var(--accent);transform:translateY(-1px)}
+.kcard:active{cursor:grabbing}
+.kc-name{font-family:var(--font-d);font-weight:700;font-size:.92rem}
+.kc-sub{font-size:.8rem;color:var(--muted);margin-top:2px}
+.cmdk{position:fixed;inset:0;z-index:120;display:none;align-items:flex-start;justify-content:center;padding-top:12vh;background:rgba(18,18,20,.4);backdrop-filter:blur(4px)}
+.cmdk.open{display:flex}
+.cmdk-box{width:min(560px,92vw);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);overflow:hidden}
+.cmdk-box input{width:100%;border:0;border-bottom:1px solid var(--line);padding:16px 18px;font-family:var(--font-b);font-size:1rem;color:var(--ink);outline:none;background:none}
+.cmdk-list{max-height:52vh;overflow-y:auto;padding:6px}
+.cmdk-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--r);cursor:pointer}
+.cmdk-item:hover,.cmdk-item.active{background:var(--accent-soft)}
+.cmdk-item .cmdk-sub{font-family:var(--font-m);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2)}
+.cmdk-empty{padding:24px;text-align:center;color:var(--muted-2);font-size:.88rem}
+.tab-body,.board{animation:fadeUp .22s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tabs::-webkit-scrollbar{height:0}
 @media(max-width:640px){.tabs{flex-wrap:nowrap;padding-bottom:6px}.tab{flex:0 0 auto}}
@@ -281,6 +294,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
     </div>
     <div class="top-actions">
       <button class="btn-ghost btn btn-sm" id="dashBtn">Dashboard</button>
+      <button class="btn-ghost btn btn-sm" id="boardBtn">Board</button>
       <button class="btn btn-sm" id="newClientBtn">+ New Client</button>
       <div style="position:relative">
         <button class="icon-btn" id="bellBtn" title="Notifications">&#128276;<span id="bellBadge" class="bell-badge hidden">0</span></button>
@@ -314,6 +328,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
   </div>
 </div>
 
+<div class="cmdk" id="cmdk"><div class="cmdk-box"><input id="cmdkInput" placeholder="Search clients or actions…  (Ctrl/Cmd + K)" autocomplete="off"/><div class="cmdk-list" id="cmdkList"></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script src="config.js"></script>
@@ -389,7 +404,7 @@ function blankClient(){
     doc_date:new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}),
     subtotal:'',tax_label:'GST (5%)',tax:'',total:'',deposit:'',balance:'',weeks:'6',
     gaps_raw:'',deliverables_raw:'',timeline_raw:'',line_items_raw:'',scope_raw:'',
-    portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null,pay_link:''};
+    portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null,pay_link:'',monthly:''};
 }
 function newClient(){current=blankClient();currentTab='details';renderSidebar();renderMain();}
 var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',pay_link:'https://buy.stripe.com/test_demo',
@@ -404,7 +419,7 @@ async function saveClient(){
   var f=['business','contact_name','city','email','phone','offer','stage','website','gbp_url','service_areas',
     'top_services','avg_job_value','target_jobs','competitor','notes','goal','start_week','proposal_num',
     'agreement_num','invoice_num','packet_num','doc_date','subtotal','tax_label','tax','total','deposit',
-    'balance','weeks','gaps_raw','deliverables_raw','timeline_raw','line_items_raw','scope_raw','pay_link'];
+    'balance','weeks','gaps_raw','deliverables_raw','timeline_raw','line_items_raw','scope_raw','pay_link','monthly'];
   var rec={};f.forEach(function(k){var e=$('f_'+k);if(e)rec[k]=e.value;});
   if(!rec.business){toast('Business name is required');return;}
   if(demo){Object.assign(current,rec);toast('Demo mode — not saved to database');renderSidebar();renderMain();return;}
@@ -451,12 +466,12 @@ function renderSidebar(){
       '<div class="cl-sub">'+esc([c.contact_name,c.city].filter(Boolean).join(' · ')||c.offer||'')+'</div></div>';
   }).join('');
 }
-function selectClient(id){current=clients.filter(function(c){return c.id===id;})[0]||null;currentTab='details';var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
+function selectClient(id){current=clients.filter(function(c){return c.id===id;})[0]||null;currentTab='details';boardMode=false;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
 
 /* ============================ MAIN ============================ */
 function renderMain(){
   var m=$('main');
-  if(!current){ m.innerHTML=dashboardHTML(); setTimeout(drawDashCharts,0); return; }
+  if(!current){ if(boardMode){m.innerHTML=boardHTML();} else {m.innerHTML=dashboardHTML();setTimeout(drawDashCharts,0);} return; }
   var c=current;
   var head='<div class="client-head"><div class="ch-top"><div>'+
     '<div class="ch-name">'+esc(c.business||'New client')+'</div>'+
@@ -486,7 +501,6 @@ function fld(label,key,c,o){o=o||{};var v=c[key]||'';
   else{input='<input id="f_'+key+'" value="'+esc(v)+'"'+(o.ph?' placeholder="'+esc(o.ph)+'"':'')+'/>';}
   return '<div class="field'+(o.full?' full':'')+'"><label>'+esc(label)+'</label>'+input+(o.hint?'<span class="hint">'+esc(o.hint)+'</span>':'')+'</div>';
 }
-function gh(t){return '<div class="group-h"><span class="mono">'+esc(t)+'</span></div>';}
 var accState=null;
 function toggleAcc(k){var b=document.getElementById('acc-'+k);if(!b)return;var open=b.classList.toggle('open');if(accState)accState[k]=open;var ch=document.getElementById('chev-'+k);if(ch)ch.textContent=open?'–':'+';}
 function detailsForm(c){
@@ -495,7 +509,7 @@ function detailsForm(c){
   var links=(c.id&&!demo)?'<div class="linkbar"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'portal\')">✉ Email portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'proposal\')">✉ Email proposal</button></div>':'';
   var who=fld('Business name','business',c)+fld('Contact name','contact_name',c)+fld('City','city',c)+fld('Email','email',c)+fld('Phone','phone',c)+fld('Offer','offer',c,{type:'select',opts:OFFERS})+fld('Pipeline stage','stage',c,{type:'select',opts:STAGES})+fld('Goal (used in welcome packet)','goal',c);
   var meta=fld('Date','doc_date',c)+fld('Start week (welcome)','start_week',c,{ph:'the week of July 7'})+fld('Proposal #','proposal_num',c)+fld('Agreement #','agreement_num',c)+fld('Invoice #','invoice_num',c)+fld('Packet #','packet_num',c);
-  var money='<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="applyPreset()">⚡ Load preset for this offer</button><span class="hint">Fills pricing, line items, deliverables, timeline &amp; scope from the selected offer.</span></div>'+fld('Subtotal','subtotal',c,{ph:'$4,500'})+fld('Total','total',c,{ph:'$4,725'})+fld('Tax label','tax_label',c)+fld('Tax','tax',c,{ph:'$225'})+fld('Deposit','deposit',c,{ph:'$2,250'})+fld('Balance','balance',c,{ph:'$2,250'})+fld('Timeline (weeks)','weeks',c)+fld('Payment link (paste a Stripe Payment Link)','pay_link',c,{full:true,ph:'https://buy.stripe.com/...'});
+  var money='<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="applyPreset()">⚡ Load preset for this offer</button><span class="hint">Fills pricing, line items, deliverables, timeline &amp; scope from the selected offer.</span></div>'+fld('Subtotal','subtotal',c,{ph:'$4,500'})+fld('Total','total',c,{ph:'$4,725'})+fld('Tax label','tax_label',c)+fld('Tax','tax',c,{ph:'$225'})+fld('Deposit','deposit',c,{ph:'$2,250'})+fld('Balance','balance',c,{ph:'$2,250'})+fld('Timeline (weeks)','weeks',c)+fld('Monthly retainer ($/mo, for MRR)','monthly',c,{ph:'$1,500'})+fld('Payment link (paste a Stripe Payment Link)','pay_link',c,{full:true,ph:'https://buy.stripe.com/...'});
   var blocks='<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="copyAIPrompt()">✨ Copy AI brief prompt</button><span class="hint">Copies a prompt to paste into Claude / ChatGPT; paste its answer back into the boxes below.</span></div>'+fld('Gaps — one per line','gaps_raw',c,{type:'area',full:true,big:90,hint:'Each line becomes a “what’s holding you back” item.'})+fld('Deliverables — "Title | Description" per line','deliverables_raw',c,{type:'area',full:true,big:110})+fld('Timeline — "Week | Description" per line','timeline_raw',c,{type:'area',full:true,big:90})+fld('Line items — "Label | Value" per line','line_items_raw',c,{type:'area',full:true,big:90,hint:'Drives the proposal investment table and the invoice.'})+fld('Scope — one per line (agreement)','scope_raw',c,{type:'area',full:true,big:90});
   var intake=fld('Website','website',c)+fld('Google Business Profile','gbp_url',c)+fld('Service areas','service_areas',c)+fld('Top services','top_services',c)+fld('Avg job value','avg_job_value',c)+fld('Target jobs / mo','target_jobs',c)+fld('Top competitor','competitor',c)+fld('Notes','notes',c,{type:'area',full:true});
   return links+sec('who','Who',who)+sec('meta','Document meta',meta)+sec('money','Money',money)+sec('blocks','Proposal / Agreement blocks',blocks)+sec('intake','Intake context',intake)+
@@ -761,10 +775,10 @@ function dashboardHTML(){
   var todo=clients.filter(function(c){return ['Proposal Sent','Signed','Intake'].indexOf(c.stage)>=0;});
   var rem=reminders();
   var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">Dashboard</div><div class="ch-meta">Your studio at a glance</div></div>'+
-    '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
+    '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="logMonthlyRetainers()">↻ Log retainers</button><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
     '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px">'+
-      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+'</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:22px"><div class="card"><div class="mono" style="margin-bottom:10px">Revenue by month</div><div style="position:relative;height:200px"><canvas id="chRev"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Pipeline by stage</div><div style="position:relative;height:200px"><canvas id="chPipe"></canvas></div></div></div>';
+      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('MRR',fmt(mrr()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+metric('Avg deal',fmt(avgDeal()))+metric('Win rate',winRate()+'%')+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:22px"><div class="card"><div class="mono" style="margin-bottom:10px">Revenue by month</div><div style="position:relative;height:200px"><canvas id="chRev"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Pipeline by stage</div><div style="position:relative;height:200px"><canvas id="chPipe"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Conversion funnel</div><div style="position:relative;height:200px"><canvas id="chFunnel"></canvas></div></div></div>';
   if(rem.length){h+='<div class="card" style="border-color:rgba(154,107,0,.45)"><div class="mono" style="margin-bottom:12px;color:#9a6b00">Reminders</div>'+
     rem.map(function(x){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+x.c.id+'\')"><div class="ir-label">'+esc(x.c.business)+'</div><div class="v" style="color:#9a6b00;font-family:var(--font-b);font-weight:600;font-size:.84rem">'+esc(x.msg)+'</div></div>';}).join('')+'</div>';}
   h+='<div class="card"><div class="mono" style="margin-bottom:12px">Needs your attention</div>'+
@@ -818,13 +832,13 @@ function reminders(){
   });
   return out;
 }
-async function autoLogPayment(stage){
-  if(demo||!current||!current.id)return;
-  var map={'Deposit Paid':{kind:'Deposit',amt:money(current.deposit)},'Active':{kind:'Balance',amt:money(current.balance)},'Closed':{kind:'Balance',amt:money(current.balance)}};
+async function autoLogPayment(stage,cl){
+  cl=cl||current; if(demo||!cl||!cl.id)return;
+  var map={'Deposit Paid':{kind:'Deposit',amt:money(cl.deposit)},'Active':{kind:'Balance',amt:money(cl.balance)},'Closed':{kind:'Balance',amt:money(cl.balance)}};
   var m=map[stage];if(!m||m.amt<=0)return;
-  var ex=await sb.from('payments').select('id').eq('client_id',current.id).eq('kind',m.kind).limit(1);
+  var ex=await sb.from('payments').select('id').eq('client_id',cl.id).eq('kind',m.kind).limit(1);
   if(ex.data&&ex.data.length)return;
-  var r=await sb.from('payments').insert({client_id:current.id,amount:m.amt,kind:m.kind,note:'Auto-logged on stage change'});
+  var r=await sb.from('payments').insert({client_id:cl.id,amount:m.amt,kind:m.kind,note:'Auto-logged on stage change'});
   if(!r.error){toast('Logged '+m.kind+' '+fmt(m.amt));await loadDashboard();}
 }
 async function exportRevenue(){
@@ -839,7 +853,7 @@ async function exportRevenue(){
   var csv=rows.map(function(row){return row.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var blob=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cursor-cat-revenue.csv';a.click();
 }
-function showDashboard(){current=null;currentTab='details';renderSidebar();renderMain();}
+function showDashboard(){current=null;boardMode=false;currentTab='details';renderSidebar();renderMain();}
 
 /* ============================ v4: project tracking + charts ============================ */
 var tasks=[];
@@ -890,6 +904,13 @@ function drawDashCharts(){
     clients.forEach(function(c){if(c.stage!=='Closed'&&byStage[c.stage]!=null)byStage[c.stage]+=money(c.total);});
     charts.pipe=new Chart(pc,{type:'bar',data:{labels:labels,datasets:[{data:labels.map(function(s){return byStage[s]||0;}),backgroundColor:'#08090a',borderRadius:4}]},options:chartOpts()});
   }
+  var fc=$('chFunnel');
+  if(fc){if(charts.funnel){charts.funnel.destroy();charts.funnel=null;}
+    var idx={};STAGES.forEach(function(s,i){idx[s]=i;});
+    var ord=[['Leads','Prospect'],['Proposal','Proposal Sent'],['Signed','Signed'],['Deposit','Deposit Paid'],['Active','Active']];
+    var fl=ord.map(function(o){var th=idx[o[1]];return clients.filter(function(c){return c.stage!=='Closed'&&idx[c.stage]>=th;}).length;});
+    charts.funnel=new Chart(fc,{type:'bar',data:{labels:ord.map(function(o){return o[0];}),datasets:[{data:fl,backgroundColor:'#2f64e6',borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+  }
 }
 
 /* ============================ v5: lite send + AI prompt ============================ */
@@ -915,6 +936,55 @@ function copyAIPrompt(){
   try{navigator.clipboard.writeText(p);toast('AI prompt copied — paste into Claude or ChatGPT');}catch(e){prompt('Copy this prompt:',p);}
 }
 
+/* ============================ v6: kanban, command palette, MRR ============================ */
+var boardMode=false;
+function showBoard(){current=null;boardMode=true;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
+function boardHTML(){
+  var cols=STAGES.map(function(s){
+    var items=clients.filter(function(c){return c.stage===s;});
+    return '<div class="kcol" ondragover="allowDrop(event)" ondragleave="this.classList.remove(\'drag-over\')" ondrop="dropStage(event,\''+esc(s)+'\')"><div class="kcol-h">'+esc(s)+'<span>'+items.length+'</span></div>'+
+      items.map(function(c){return '<div class="kcard" draggable="true" ondragstart="dragStart(event,\''+c.id+'\')" onclick="selectClient(\''+c.id+'\')"><div class="kc-name">'+esc(c.business||'Untitled')+'</div><div class="kc-sub">'+esc([c.contact_name,c.total].filter(Boolean).join(' · '))+'</div></div>';}).join('')+
+    '</div>';
+  }).join('');
+  return '<div class="client-head"><div class="ch-top"><div><div class="ch-name">Pipeline</div><div class="ch-meta">Drag a client to change its stage</div></div><div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="showDashboard()">Dashboard</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div><div class="board">'+cols+'</div>';
+}
+function dragStart(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move';}
+function allowDrop(ev){ev.preventDefault();ev.currentTarget.classList.add('drag-over');}
+async function dropStage(ev,stage){ev.preventDefault();ev.currentTarget.classList.remove('drag-over');var id=ev.dataTransfer.getData('text/plain');await moveClientStage(id,stage);}
+async function moveClientStage(id,stage){
+  var cl=clients.filter(function(c){return c.id===id;})[0];if(!cl||cl.stage===stage)return;
+  if(demo){cl.stage=stage;renderMain();return;}
+  var r=await sb.from('clients').update({stage:stage}).eq('id',id);if(r.error){toast('Move failed');return;}
+  cl.stage=stage;toast((cl.business||'Client')+' → '+stage);await autoLogPayment(stage,cl);await loadClients();
+}
+
+var cmdCache=[];
+function openCmd(){var o=$('cmdk');o.classList.add('open');var inp=$('cmdkInput');inp.value='';renderCmd('');inp.focus();}
+function closeCmd(){$('cmdk').classList.remove('open');}
+function cmdItems(q){q=(q||'').toLowerCase();var out=[];
+  [['Dashboard',showDashboard],['Pipeline board',showBoard],['New client',newClient]].forEach(function(a){if(a[0].toLowerCase().indexOf(q)>=0)out.push({l:a[0],sub:'Action',fn:a[1]});});
+  clients.forEach(function(c){if(!q||(c.business||'').toLowerCase().indexOf(q)>=0||(c.contact_name||'').toLowerCase().indexOf(q)>=0)out.push({l:c.business||'Untitled',sub:c.stage,fn:(function(cc){return function(){selectClient(cc.id);};})(c)});});
+  return out.slice(0,12);
+}
+function renderCmd(q){var items=cmdItems(q);cmdCache=items;var list=$('cmdkList');list.innerHTML=items.length?items.map(function(it,i){return '<div class="cmdk-item'+(i===0?' active':'')+'" onclick="runCmd('+i+')"><span>'+esc(it.l)+'</span><span class="cmdk-sub">'+esc(it.sub)+'</span></div>';}).join(''):'<div class="cmdk-empty">No matches</div>';}
+function runCmd(i){var it=cmdCache[i];if(!it)return;closeCmd();it.fn();}
+
+function mrr(){return clients.reduce(function(s,c){return (['Active','Kick-off'].indexOf(c.stage)>=0)?s+money(c.monthly):s;},0);}
+function avgDeal(){var v=clients.map(function(c){return money(c.total);}).filter(function(x){return x>0;});return v.length?v.reduce(function(a,b){return a+b;},0)/v.length:0;}
+function winRate(){var won=clients.filter(function(c){return ['Deposit Paid','Intake','Kick-off','Active'].indexOf(c.stage)>=0;}).length;var lost=clients.filter(function(c){return c.stage==='Closed';}).length;var t=won+lost;return t?Math.round(won/t*100):0;}
+async function logMonthlyRetainers(){
+  if(demo||!sb){toast('Connect Supabase first');return;}
+  var month=new Date().toISOString().slice(0,7),n=0;
+  for(var i=0;i<clients.length;i++){var c=clients[i],amt=money(c.monthly);
+    if(amt<=0||['Active','Kick-off'].indexOf(c.stage)<0)continue;
+    var ex=await sb.from('payments').select('id').eq('client_id',c.id).eq('kind','Retainer').gte('paid_on',month+'-01');
+    if(ex.data&&ex.data.length)continue;
+    var r=await sb.from('payments').insert({client_id:c.id,amount:amt,kind:'Retainer',note:'Monthly retainer '+month});
+    if(!r.error)n++;
+  }
+  toast(n?('Logged '+n+' retainer(s)'):'Retainers already logged this month');await loadDashboard();renderMain();
+}
+
 /* ============================ WIRE-UP ============================ */
 $('loginForm').addEventListener('submit',doLogin);
 $('dashBtn').addEventListener('click',showDashboard);
@@ -935,6 +1005,11 @@ $('saveSettings').addEventListener('click',function(){
   localStorage.setItem(SB_URL_K,u);localStorage.setItem(SB_KEY_K,k);location.reload();
 });
 function openSettings(force){var c=getCfg();$('sbUrl').value=c.url;$('sbKey').value=c.key;$('settingsOverlay').classList.add('open');if(force)$('login').classList.remove('hidden');}
+$('boardBtn').addEventListener('click',showBoard);
+$('cmdkInput').addEventListener('input',function(e){renderCmd(e.target.value);});
+$('cmdkInput').addEventListener('keydown',function(e){if(e.key==='Enter'){runCmd(0);}else if(e.key==='Escape'){closeCmd();}});
+$('cmdk').addEventListener('click',function(e){if(e.target===$('cmdk'))closeCmd();});
+document.addEventListener('keydown',function(e){if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();openCmd();}});
 
 boot();
 </script>
