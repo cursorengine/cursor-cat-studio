@@ -218,6 +218,8 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 .bell-item .bd{font-size:.7rem;color:var(--muted-2);font-family:var(--font-m);margin-top:3px}
 .bell-empty{padding:26px;text-align:center;color:var(--muted-2);font-size:.86rem}
 .menu-btn{display:none}
+.side-nav{display:none;gap:8px;flex-wrap:wrap;padding:14px 18px 12px;border-bottom:1px solid var(--line)}
+@media(max-width:860px){#dashBtn,#boardBtn,#planBtn,#newClientBtn{display:none}.side-nav{display:flex}}
 @media(max-width:860px){.menu-btn{display:grid}.sidebar.show{box-shadow:var(--sh)}}
 @media(max-width:640px){#dashBtn{display:none}.topbar{padding:0 14px}.top-actions{gap:7px}.tab-body{padding:18px 14px}.bell-panel{width:min(320px,92vw)}.client-head{padding:16px 16px}.brand img{height:30px}.doc{padding:26px 18px}}
 .linkbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
@@ -295,6 +297,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
     <div class="top-actions">
       <button class="btn-ghost btn btn-sm" id="dashBtn">Dashboard</button>
       <button class="btn-ghost btn btn-sm" id="boardBtn">Board</button>
+      <button class="btn-ghost btn btn-sm" id="planBtn">90-Day Plan</button>
       <button class="btn btn-sm" id="newClientBtn">+ New Client</button>
       <div style="position:relative">
         <button class="icon-btn" id="bellBtn" title="Notifications">&#128276;<span id="bellBadge" class="bell-badge hidden">0</span></button>
@@ -307,6 +310,12 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
+      <div class="side-nav">
+        <button class="btn-ghost btn btn-sm" onclick="showDashboard()">Dashboard</button>
+        <button class="btn-ghost btn btn-sm" onclick="showBoard()">Board</button>
+        <button class="btn-ghost btn btn-sm" onclick="showGrowth()">90-Day Plan</button>
+        <button class="btn btn-sm" onclick="newClient()">+ New Client</button>
+      </div>
       <div class="side-head"><input class="search" id="search" placeholder="Search clients..."/></div>
       <div class="pipeline" id="pipeline"></div>
       <div class="cl-list" id="clList"></div>
@@ -406,7 +415,7 @@ function blankClient(){
     gaps_raw:'',deliverables_raw:'',timeline_raw:'',line_items_raw:'',scope_raw:'',
     portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null,pay_link:'',monthly:''};
 }
-function newClient(){current=blankClient();currentTab='details';renderSidebar();renderMain();}
+function newClient(){current=blankClient();currentTab='details';boardMode=false;growthMode=false;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
 var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',pay_link:'https://buy.stripe.com/test_demo',
 gaps_raw:'Google Business Profile has 4 reviews and no photos; your top competitor averages 40+.\nWebsite loads in 7 seconds on mobile — visitors leave before they call.\nNot in the map pack for "plumber Calgary" — where 70% of local clicks go.',
 deliverables_raw:'Website Design & Build | 5-page lead-generating site, mobile-first, built to convert.\nGoogle Business Profile Setup | Full optimization: categories, photos, Q&A, review templates.\nCitation Cleanup | NAP consistency across 20+ directories.\nGoogle Ads Campaign | 2 ad groups, conversion tracking wired to your phone.\nDirect Access to Brent | You text the person doing the work.',
@@ -775,7 +784,7 @@ function dashboardHTML(){
   var todo=clients.filter(function(c){return ['Proposal Sent','Signed','Intake'].indexOf(c.stage)>=0;});
   var rem=reminders();
   var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">Dashboard</div><div class="ch-meta">Your studio at a glance</div></div>'+
-    '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="showGrowth()">90-Day Plan</button><button class="btn-ghost btn btn-sm" onclick="logMonthlyRetainers()">↻ Log retainers</button><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
+    '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="logMonthlyRetainers()">↻ Log retainers</button><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button></div></div></div>'+
     '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px">'+
       metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('MRR',fmt(mrr()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+metric('Avg deal',fmt(avgDeal()))+metric('Win rate',winRate()+'%')+'</div>'+goalsHTML()+weeklyHTML()+
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:22px"><div class="card"><div class="mono" style="margin-bottom:10px">Revenue by month</div><div style="position:relative;height:200px"><canvas id="chRev"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Pipeline by stage</div><div style="position:relative;height:200px"><canvas id="chPipe"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Conversion funnel</div><div style="position:relative;height:200px"><canvas id="chFunnel"></canvas></div></div></div>';
@@ -853,7 +862,7 @@ async function exportRevenue(){
   var csv=rows.map(function(row){return row.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var blob=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cursor-cat-revenue.csv';a.click();
 }
-function showDashboard(){current=null;boardMode=false;growthMode=false;currentTab='details';renderSidebar();renderMain();}
+function showDashboard(){current=null;boardMode=false;growthMode=false;currentTab='details';var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
 
 /* ============================ v4: project tracking + charts ============================ */
 var tasks=[];
@@ -947,7 +956,7 @@ function boardHTML(){
       items.map(function(c){return '<div class="kcard" draggable="true" ondragstart="dragStart(event,\''+c.id+'\')" onclick="selectClient(\''+c.id+'\')"><div class="kc-name">'+esc(c.business||'Untitled')+'</div><div class="kc-sub">'+esc([c.contact_name,c.total].filter(Boolean).join(' · '))+'</div></div>';}).join('')+
     '</div>';
   }).join('');
-  return '<div class="client-head"><div class="ch-top"><div><div class="ch-name">Pipeline</div><div class="ch-meta">Drag a client to change its stage</div></div><div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="showDashboard()">Dashboard</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div><div class="board">'+cols+'</div>';
+  return '<div class="client-head"><div class="ch-top"><div><div class="ch-name">Pipeline</div><div class="ch-meta">Drag a client to change its stage</div></div></div></div><div class="board">'+cols+'</div>';
 }
 function dragStart(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move';}
 function allowDrop(ev){ev.preventDefault();ev.currentTarget.classList.add('drag-over');}
@@ -1040,7 +1049,7 @@ async function delGrowth(id){var r=await sb.from('tasks').delete().eq('id',id);i
 async function loadGrowth90(){if(!confirm('Add the 90-day plan tasks?'))return;var rows=GROWTH_PLAN.map(function(p,i){return {client_id:null,phase:p[0],title:p[1],sort:i};});var r=await sb.from('tasks').insert(rows);if(r.error){toast('Failed: '+r.error.message);return;}toast('90-day plan added');await loadGrowthTasks();renderMain();}
 function growthHTML(){
   var doneN=growthTasks.filter(function(t){return t.done;}).length,pct=growthTasks.length?Math.round(doneN/growthTasks.length*100):0;
-  var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">90-Day Growth Plan</div><div class="ch-meta">Your acquisition engine — '+doneN+'/'+growthTasks.length+' done</div></div><div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="showDashboard()">Dashboard</button></div></div></div><div class="tab-body" style="max-width:760px">';
+  var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">90-Day Growth Plan</div><div class="ch-meta">Your acquisition engine — '+doneN+'/'+growthTasks.length+' done</div></div></div></div><div class="tab-body" style="max-width:760px">';
   if(demo){return h+'<p class="note">Connect Supabase to use the growth plan.</p></div>';}
   h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-family:var(--font-d)">Progress</strong><span class="mono">'+pct+'%</span></div><div style="height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:99px"></div></div></div>';
   if(!growthTasks.length){h+='<div class="card center" style="padding:30px"><p style="margin-bottom:14px">No growth tasks yet.</p><button class="btn" onclick="loadGrowth90()">Load the 90-day plan</button></div>';}
@@ -1070,6 +1079,7 @@ $('saveSettings').addEventListener('click',function(){
 });
 function openSettings(force){var c=getCfg();$('sbUrl').value=c.url;$('sbKey').value=c.key;$('settingsOverlay').classList.add('open');if(force)$('login').classList.remove('hidden');}
 $('boardBtn').addEventListener('click',showBoard);
+$('planBtn').addEventListener('click',showGrowth);
 $('cmdkInput').addEventListener('input',function(e){renderCmd(e.target.value);});
 $('cmdkInput').addEventListener('keydown',function(e){if(e.key==='Enter'){runCmd(0);}else if(e.key==='Escape'){closeCmd();}});
 $('cmdk').addEventListener('click',function(e){if(e.target===$('cmdk'))closeCmd();});
