@@ -4,6 +4,73 @@ var sb=(window.CCD&&window.CCD.url)?window.supabase.createClient(window.CCD.url,
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function fail(m){gel('root').innerHTML='<div class="card center" style="padding:46px"><h2 style="margin-bottom:8px">Link not found</h2><p>'+esc(m||'This portal link is not valid. Please use the link we emailed you, or contact brent@cursorcat.digital.')+'</p></div>';}
 function confetti(){var cv=gel('cfx'),x=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;var P=[],C=['#2f64e6','#1a7f37','#08090a','#7a7c83'];for(var i=0;i<120;i++)P.push({x:Math.random()*cv.width,y:-20-Math.random()*cv.height,r:4+Math.random()*5,c:C[i%4],s:2+Math.random()*3,a:Math.random()*6});var t=0;(function loop(){t++;x.clearRect(0,0,cv.width,cv.height);P.forEach(function(p){p.y+=p.s;p.x+=Math.sin((p.y+p.a)/30);x.fillStyle=p.c;x.fillRect(p.x,p.y,p.r,p.r);});if(t<160)requestAnimationFrame(loop);else x.clearRect(0,0,cv.width,cv.height);})();}
+
+function videoEmbed(url){
+  if(!url)return '';
+  var src='',loom=url.match(/loom\.com\/(?:share|embed)\/([a-zA-Z0-9]+)/),
+    yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+  if(loom)src='https://www.loom.com/embed/'+loom[1];
+  else if(yt)src='https://www.youtube.com/embed/'+yt[1];
+  if(src)return '<div class="video-wrap"><iframe src="'+esc(src)+'" allow="autoplay; fullscreen" allowfullscreen></iframe></div>';
+  return '<p style="margin-bottom:14px"><a class="btn ghost" href="'+esc(url)+'" target="_blank" rel="noopener">▶ Watch my welcome video</a></p>';
+}
+function resultsBlock(list){
+  if(!list||!list.length)return '';
+  var latest=list[0],rest=list.slice(1);
+  var stats=[['Leads',latest.leads],['Calls',latest.calls],['Jobs booked',latest.jobs],['Ad spend',latest.ad_spend]]
+    .filter(function(x){return x[1];}).map(function(x){return '<div class="stat"><div class="l">'+esc(x[0])+'</div><div class="v">'+esc(x[1])+'</div></div>';}).join('');
+  var h='<div class="card"><div class="sec-h">Your results — '+esc(latest.month||'')+'</div>'+
+    (stats?'<div class="stats">'+stats+'</div>':'')+
+    (latest.notes?'<p class="note">'+esc(latest.notes)+'</p>':'');
+  if(rest.length){
+    h+='<div class="mono" style="margin:14px 0 6px">Previous months</div>'+
+      rest.map(function(x){return '<p class="note" style="margin-bottom:4px">'+esc(x.month)+' — Leads '+esc(x.leads||'—')+' · Calls '+esc(x.calls||'—')+' · Jobs '+esc(x.jobs||'—')+'</p>';}).join('');
+  }
+  return h+'</div>';
+}
+function projectBlock(tasks){
+  if(!tasks||!tasks.length)return '';
+  var doneN=tasks.filter(function(t){return t.done;}).length,pct=Math.round(doneN/tasks.length*100);
+  var byPhase={},order=[];
+  tasks.forEach(function(t){if(!byPhase[t.phase]){byPhase[t.phase]=[];order.push(t.phase);}byPhase[t.phase].push(t);});
+  var h='<div class="card"><div class="sec-h">Your project</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="note">Progress</span><span class="mono">'+pct+'%</span></div>'+
+    '<div class="prog"><i style="width:'+pct+'%"></i></div>';
+  order.forEach(function(ph){
+    h+='<div class="mono" style="margin:16px 0 8px">'+esc(ph)+'</div>'+
+      byPhase[ph].map(function(t){return '<p style="margin-bottom:5px"><span style="color:'+(t.done?'#1a7f37':'var(--muted-2)')+'">'+(t.done?'✓':'○')+'</span> <span style="'+(t.done?'text-decoration:line-through;color:var(--muted-2)':'')+'">'+esc(t.title)+'</span></p>';}).join('');
+  });
+  return h+'</div>';
+}
+function updatesBlock(list){
+  if(!list||!list.length)return '';
+  return '<div class="card"><div class="sec-h">Updates from Brent</div><div class="updates">'+
+    list.map(function(u){return '<div class="update"><div class="dt">'+esc(new Date(u.created_at).toLocaleDateString('en-CA',{year:'numeric',month:'short',day:'numeric'}))+'</div>'+esc(u.body)+'</div>';}).join('')+
+    '</div></div>';
+}
+function documentsBlock(d){
+  var rows=[];
+  if(d.signed_proposal)rows.push({t:'Proposal'+(d.proposal_num?' #'+d.proposal_num:''),go:'sign.html?doc=proposal&t='+encodeURIComponent(TOKEN)});
+  if(d.signed_agreement)rows.push({t:'Service Agreement'+(d.agreement_num?' #'+d.agreement_num:''),go:'sign.html?doc=agreement&t='+encodeURIComponent(TOKEN)});
+  if(!rows.length)return '';
+  return '<div class="card"><div class="sec-h">Your documents</div>'+
+    rows.map(function(r){return '<div class="step"><div><div class="t">'+esc(r.t)+'</div><div class="d">Signed &amp; on file</div></div><a class="btn done go" href="'+r.go+'">View</a></div>';}).join('')+
+    '</div>';
+}
+function invoicesBlock(list){
+  if(!list||!list.length)return '';
+  return '<div class="card"><div class="sec-h">Your invoices</div>'+
+    list.map(function(i){
+      return '<div class="step"><div><div class="t">'+esc(i.invoice_num?'#'+i.invoice_num:'Invoice')+' — '+esc(i.kind||'')+'</div>'+
+        '<div class="d">'+esc(i.total||'')+(i.status==='Paid'?' · Paid':' · Unpaid')+'</div></div>'+
+        '<a class="btn '+(i.status==='Paid'?'done':'')+' go" href="invoice.html?t='+encodeURIComponent(TOKEN)+'&inv='+encodeURIComponent(i.id)+'">View</a></div>';
+    }).join('')+'</div>';
+}
+function referralBlock(){
+  return '<div class="ref-card"><div class="eyebrow">Know a business that needs this?</div>'+
+    '<p style="color:var(--ink);margin-bottom:14px">Send them our way — if they sign on, you get <span class="amt chrome-text">$100</span>.</p>'+
+    '<a class="btn" href="mailto:brent@cursorcat.digital?subject=A%20referral%20for%20you&body=Hey%20Brent%2C%20I%20want%20to%20refer%20a%20business%20your%20way.">Send a referral →</a></div>';
+}
 function render(d){
   var steps=[
     {k:'proposal',t:'Review & sign your proposal',done:d.signed_proposal,go:'sign.html?doc=proposal&t='+encodeURIComponent(TOKEN)},
@@ -13,19 +80,19 @@ function render(d){
   var doneN=steps.filter(function(s){return s.done;}).length, pct=Math.round(doneN/steps.length*100);
   var h='<div class="hero"><img src="navbar-logo.png" alt="Cursor Cat Digital"/><div class="mono">Your onboarding</div>'+
     '<h1>Welcome, '+esc(d.business||'')+'.</h1><p>'+(d.goal?'Our shared goal: '+esc(d.goal)+'.':'Let us get your phone ringing.')+'</p></div>';
+  h+=videoEmbed(d.welcome_video_url);
+  if(d.welcome_note){h+='<div class="muted-card">'+esc(d.welcome_note)+'</div>';}
   h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><strong style="font-family:var(--font-d)">Your progress</strong><span class="mono">'+pct+'% complete</span></div><div class="prog"><i style="width:'+pct+'%"></i></div></div>';
   h+='<div class="steps">'+steps.map(function(s){
     return '<div class="step'+(s.done?' done':'')+'"><div class="ck">'+(s.done?'✓':'')+'</div><div><div class="t">'+esc(s.t)+'</div><div class="d">'+(s.done?'Done — thank you':'Tap to complete')+'</div></div><a class="btn '+(s.done?'done':'')+' go" href="'+s.go+'">'+(s.done?'View':'Start')+'</a></div>';
   }).join('')+'</div>';
   if(d.start_week){h+='<div class="muted-card">🚀 Your build kicks off '+esc(d.start_week)+'.</div>';}
-  if(d.invoices&&d.invoices.length){
-    h+='<div class="card" style="margin-bottom:14px"><strong style="font-family:var(--font-d);display:block;margin-bottom:10px">Your invoices</strong>'+
-      d.invoices.map(function(i){
-        return '<div class="step" style="padding:10px 0"><div><div class="t">'+esc(i.invoice_num?'#'+i.invoice_num:'Invoice')+' — '+esc(i.kind||'')+'</div>'+
-          '<div class="d">'+esc(i.total||'')+(i.status==='Paid'?' · Paid':' · Unpaid')+'</div></div>'+
-          '<a class="btn '+(i.status==='Paid'?'done':'')+' go" href="invoice.html?t='+encodeURIComponent(TOKEN)+'&inv='+encodeURIComponent(i.id)+'">View</a></div>';
-      }).join('')+'</div>';
-  }
+  h+=resultsBlock(d.results);
+  h+=projectBlock(d.tasks);
+  h+=updatesBlock(d.updates);
+  h+=invoicesBlock(d.invoices);
+  h+=documentsBlock(d);
+  h+=referralBlock();
   h+='<div class="dark"><h3>Questions any time?</h3><p style="font-family:var(--font-m);font-size:.8rem;line-height:2">brent@cursorcat.digital &nbsp;·&nbsp; 587-986-3069</p></div>';
   if(doneN===steps.length){h+='<div class="muted-card center"><strong>You are all set 🎉</strong> Everything is in. I will be in touch to kick things off.</div>';}
   gel('root').innerHTML=h+'';

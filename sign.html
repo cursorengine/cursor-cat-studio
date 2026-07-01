@@ -41,9 +41,14 @@ function initPad(cv){var x=cv.getContext('2d'),drawing=false,last=null;x.strokeS
   cv.addEventListener('touchstart',down);cv.addEventListener('touchmove',move);cv.addEventListener('touchend',up);
   return {clear:function(){x.clearRect(0,0,cv.width,cv.height);cv._used=false;},cv:cv};
 }
+function signedLn(sig){
+  var d=sig&&sig.signed_at?new Date(sig.signed_at).toLocaleDateString('en-CA'):'';
+  return (sig&&sig.image?'<img src="'+sig.image+'" style="height:44px;display:block;margin-bottom:4px"/>':'<div style="font-family:var(--font-d);font-size:1.2rem;margin-bottom:4px">'+esc(sig&&sig.name||'')+'</div>')+
+    '<div style="color:#1a7f37;font-size:.85rem">✓ Signed electronically '+esc(d)+'</div>';
+}
 function render(d){
-  if(DOC==='agreement'&&d.signed_agreement){return signedScreen('agreement');}
-  if(DOC==='proposal'&&d.signed_proposal){return signedScreen('proposal');}
+  if(DOC==='agreement'&&d.signed_agreement){return signedScreen('agreement',d);}
+  if(DOC==='proposal'&&d.signed_proposal){return signedScreen('proposal',d);}
   var body=DOC==='agreement'?docAgreement(d):docProposal(d);
   var title=DOC==='agreement'?'Service Agreement':'Proposal';
   var h='<div class="eyebrow">'+esc(title)+'</div>'+body+
@@ -57,7 +62,14 @@ function render(d){
   gel('clr').addEventListener('click',function(){sigPad.clear();});
   gel('sign').addEventListener('click',doSign);
 }
-function signedScreen(doc){gel('root').innerHTML='<div class="big-ok"><div class="ic">✓</div><h2>Already signed</h2><p>Your '+doc+' is signed — nothing more to do here.</p><a class="btn ghost" style="margin-top:18px" href="portal.html?t='+encodeURIComponent(TOKEN)+'">Back to your portal</a></div>';}
+function signedScreen(doc,d){
+  var body=doc==='agreement'?docAgreement(d):docProposal(d);
+  var sig=doc==='agreement'?d.signed_agreement:d.signed_proposal;
+  var title=doc==='agreement'?'Service Agreement':'Proposal';
+  gel('root').innerHTML='<div class="eyebrow">'+esc(title)+' · Signed</div>'+body+
+    '<div class="card"><div class="mono" style="margin-bottom:10px">Signature on file</div>'+signedLn(sig)+'</div>'+
+    '<div class="card center"><a class="btn ghost" href="portal.html?t='+encodeURIComponent(TOKEN)+'">← Back to your portal</a></div>';
+}
 function doSign(){
   var name=gel('sname').value.trim();
   if(!name){gel('msg').textContent='Please type your name to sign.';return;}

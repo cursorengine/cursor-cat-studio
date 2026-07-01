@@ -350,3 +350,46 @@ Link, and paid/unpaid status).
 ### Re-upload for v9
 `index.html`, `portal.html`, `invoice.html`, re-run `supabase_setup.sql`, re-deploy
 `stripe-webhook.ts`.
+
+---
+
+## v10 — a portal that's proof, not just a checklist
+
+Six additions aimed at one thing: making the portal feel like nowhere else a client
+has been onboarded before — results they can see, progress they can watch, updates
+without waiting on email, a personal touch, their documents in one place, and a
+referral reason to talk about you. Plus a mobile/UI pass across all the client pages.
+
+### One-time setup
+1. **Re-run `supabase_setup.sql`.** Adds the `results` and `updates` tables, a
+   `welcome_video_url` / `welcome_note` column on clients, and extends `get_portal`
+   to return results, updates, the read-only task list, and the actual signature data
+   (needed for the new document vault).
+2. **Re-upload** `index.html`, `portal.html`, `sign.html`, `brand.css`.
+
+### What's new
+- **Your results** — a new **Results** tab (Details-tab-style list + form) where you
+  log each month's leads, calls, jobs booked, and ad spend per client. Shows on the
+  portal as clean stat cards for the latest month plus a short history — the actual
+  proof-of-value most agency portals never bother to show.
+- **Your project** — the existing Project tab's phase/task checklist is now mirrored
+  read-only on the portal, so a client can watch the build happen instead of wondering
+  if anything's happening.
+- **Updates from Brent** — a new **Updates** tab lets you post a short note (ships
+  instantly to their portal) any time something happens worth telling them, without
+  writing an email.
+- **A personal welcome** — Details tab has a **Welcome video URL** (paste a Loom or
+  YouTube link — it embeds automatically) and a **Welcome note**, both optional, shown
+  at the top of the portal.
+- **Your documents (the vault)** — once a proposal or agreement is signed, it now shows
+  as a permanent, re-viewable entry on the portal with the actual signature attached
+  (previously, revisiting a signed document just showed "already signed, nothing to
+  do here" — that's fixed).
+- **$100 referral block** — a standing card on every portal: refer a business, get
+  $100 when they sign. One click opens a pre-filled email to you.
+- **Mobile pass** — list rows (steps, invoices, documents) stack cleanly on narrow
+  screens instead of cramming icon+text+button onto one line; cards and padding tighten
+  up below 560px; stat cards reflow to two columns on phones.
+
+### Re-upload for v10
+`index.html`, `portal.html`, `sign.html`, `brand.css` — and re-run the SQL.

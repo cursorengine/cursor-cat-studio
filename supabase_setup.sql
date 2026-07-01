@@ -561,3 +561,95 @@ begin
       from public.invoices i where i.client_id = r.id)
   );
 end $$;
+
+-- ============================================================================
+-- v10 — results, live project view, updates feed, welcome note/video, vault
+-- ============================================================================
+-- Six additions to make the portal feel like proof of work, not just a
+-- checklist: monthly results (leads/calls/jobs/spend), a read-only mirror of
+-- the Project tab's task list, a lightweight update feed you post to, a
+-- personal welcome video/note, and (in the app files) a signed-document vault
+-- + a $100 referral block. This section only covers the database side.
+
+create table if not exists public.results (
+  id         uuid primary key default gen_random_uuid(),
+  client_id  uuid not null references public.clients(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  month      text default '',   -- e.g. "2026-07"
+  leads      text default '',
+  calls      text default '',
+  jobs       text default '',
+  ad_spend   text default '',
+  notes      text default ''
+);
+alter table public.results enable row level security;
+drop policy if exists results_authenticated_all on public.results;
+create policy results_authenticated_all on public.results
+  for all to authenticated using (true) with check (true);
+create index if not exists results_client_idx on public.results (client_id);
+
+create table if not exists public.updates (
+  id         uuid primary key default gen_random_uuid(),
+  client_id  uuid not null references public.clients(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  body       text not null default ''
+);
+alter table public.updates enable row level security;
+drop policy if exists updates_authenticated_all on public.updates;
+create policy updates_authenticated_all on public.updates
+  for all to authenticated using (true) with check (true);
+create index if not exists updates_client_idx on public.updates (client_id);
+
+alter table public.clients add column if not exists welcome_video_url text default '';
+alter table public.clients add column if not exists welcome_note      text default '';
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='results') then
+    alter publication supabase_realtime add table public.results;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='updates') then
+    alter publication supabase_realtime add table public.updates;
+  end if;
+end $$;
+
+-- get_portal now also returns results, updates and the read-only project
+-- task list, plus the welcome video/note for the hero section
+create or replace function public.get_portal(p_token text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'id',r.id,
+    'business',r.business,'contact_name',r.contact_name,'city',r.city,'email',r.email,'offer',r.offer,
+    'stage',r.stage,'goal',r.goal,'start_week',r.start_week,'doc_date',r.doc_date,
+    'welcome_video_url',r.welcome_video_url,'welcome_note',r.welcome_note,
+    'intake_submitted',r.intake_submitted,
+    'signed_proposal',r.signed_proposal,
+    'signed_agreement',r.signed_agreement,
+    'proposal_num',r.proposal_num,'agreement_num',r.agreement_num,'invoice_num',r.invoice_num,
+    'total',r.total,'deposit',r.deposit,'balance',r.balance,'weeks',r.weeks,
+    'subtotal',r.subtotal,'tax_label',r.tax_label,'tax',r.tax,'pay_link',r.pay_link,
+    'gaps_raw',r.gaps_raw,'deliverables_raw',r.deliverables_raw,'timeline_raw',r.timeline_raw,
+    'line_items_raw',r.line_items_raw,'scope_raw',r.scope_raw,
+    'invoices',(select coalesce(jsonb_agg(jsonb_build_object(
+        'id',i.id,'invoice_num',i.invoice_num,'doc_date',i.doc_date,'kind',i.kind,
+        'total',i.total,'status',i.status
+      ) order by i.created_at desc),'[]'::jsonb)
+      from public.invoices i where i.client_id = r.id),
+    'results',(select coalesce(jsonb_agg(jsonb_build_object(
+        'month',x.month,'leads',x.leads,'calls',x.calls,'jobs',x.jobs,'ad_spend',x.ad_spend,'notes',x.notes
+      ) order by x.month desc),'[]'::jsonb)
+      from public.results x where x.client_id = r.id),
+    'updates',(select coalesce(jsonb_agg(jsonb_build_object(
+        'body',u.body,'created_at',u.created_at
+      ) order by u.created_at desc),'[]'::jsonb)
+      from public.updates u where u.client_id = r.id),
+    'tasks',(select coalesce(jsonb_agg(jsonb_build_object(
+        'phase',t.phase,'title',t.title,'done',t.done
+      ) order by t.phase, t.sort),'[]'::jsonb)
+      from public.tasks t where t.client_id = r.id)
+  );
+end $$;
