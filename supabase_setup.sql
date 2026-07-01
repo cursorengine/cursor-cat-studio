@@ -409,19 +409,34 @@ end $$;
 alter table public.clients add column if not exists monthly text;
 
 -- ============================================================================
--- v7 — weekly leading-indicator log (Growth HQ scoreboard) + growth tasks
---   (growth tasks reuse the tasks table with client_id = null — no new table)
+-- v7 — Stripe webhook automation (auto-log payments from Payment Links)
 -- ============================================================================
-create table if not exists public.weekly_log (
-  id         uuid primary key default gen_random_uuid(),
-  week_start date not null unique,
-  outreach   int default 0,
-  replies    int default 0,
-  calls      int default 0,
-  content    int default 0,
-  created_at timestamptz not null default now()
-);
-alter table public.weekly_log enable row level security;
-drop policy if exists weekly_log_authenticated_all on public.weekly_log;
-create policy weekly_log_authenticated_all on public.weekly_log
-  for all to authenticated using (true) with check (true);
+
+-- lets the webhook function de-dupe if Stripe retries a delivery
+alter table public.payments add column if not exists stripe_session_id text;
+create unique index if not exists payments_stripe_session_idx
+  on public.payments (stripe_session_id) where stripe_session_id is not null;
+
+-- expose the client's id via the public portal RPC so portal.html can pass
+-- it to Stripe as client_reference_id (safe: the id alone grants no access,
+-- the portal_token still gates everything else)
+create or replace function public.get_portal(p_token text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'id',r.id,
+    'business',r.business,'contact_name',r.contact_name,'city',r.city,'offer',r.offer,
+    'stage',r.stage,'goal',r.goal,'start_week',r.start_week,'doc_date',r.doc_date,
+    'intake_submitted',r.intake_submitted,
+    'signed_proposal',(r.signed_proposal is not null),
+    'signed_agreement',(r.signed_agreement is not null),
+    'proposal_num',r.proposal_num,'agreement_num',r.agreement_num,
+    'total',r.total,'deposit',r.deposit,'balance',r.balance,'weeks',r.weeks,
+    'subtotal',r.subtotal,'tax_label',r.tax_label,'tax',r.tax,'pay_link',r.pay_link,
+    'gaps_raw',r.gaps_raw,'deliverables_raw',r.deliverables_raw,'timeline_raw',r.timeline_raw,
+    'line_items_raw',r.line_items_raw,'scope_raw',r.scope_raw
+  );
+end $$;

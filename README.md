@@ -193,13 +193,9 @@ The updated `index.html` — and re-run the SQL.
 
 ## Roadmap — features that need a backend (Supabase Edge Functions) + accounts
 
-These three need a small server-side function and your own account/API key. When you're
+These need a small server-side function and your own account/API key. When you're
 ready, set up the account and I'll build the function + wire it into the app:
 
-- **Online payments** — a Stripe account. Adds a "Pay deposit" button on the invoice +
-  portal; a webhook auto-marks paid and logs the payment. (A no-backend "lite" version is
-  possible now: paste a Stripe Payment Link per client + a Pay button, with paid logged on
-  stage change.)
 - **One-click email send** — an email provider (e.g. Resend) API key. Sends the portal /
   proposal / invoice link from inside the app. (Lite version now: a "Send" button that
   opens your email client pre-filled.)
@@ -260,23 +256,29 @@ Re-upload `index.html` and `portal.html`.
 
 ---
 
-## v7 — Growth HQ built in
+## v7 — Stripe webhook automation (payments auto-log, no manual step)
+
+Builds on the v5 "lite payments" Payment Link — you still paste one Stripe Payment Link
+per client. The difference: when a client actually pays, Stripe now tells Supabase
+directly, so the payment logs itself (Payments tab, Dashboard revenue, notification bell)
+instead of you having to remember to flip the stage or type it in.
 
 ### One-time setup
-**Re-run `supabase_setup.sql`** (adds the `weekly_log` table). Re-upload `index.html`.
-
-### What's new (pulled from your Notion Growth HQ)
-- **Scoreboard goals on the Dashboard** — progress bars for your 90-day targets:
-  MRR vs $3,600, Revenue collected vs $15k, Active retainers vs 3.
-- **Weekly inputs tracker** — log your leading indicators (outreach touches 50–75,
-  replies, strategy calls 3–5, content 3) with targets; new leads this week auto-count.
-  "Save week" stores it per week.
-- **Brand voice baked into the AI prompt** — every AI brief now carries your messaging
-  rules (founder-led, sell outcomes, name the number, no buzzwords, anchor the guarantee).
-- **90-Day Growth Plan board** — a personal acquisition task board (separate from client
-  projects). Click **90-Day Plan** on the Dashboard, then "Load the 90-day plan."
-- **Extended pipeline** — added top-of-funnel sales stages (Outreach Sent, Replied,
-  Call Booked) so the board covers outreach → delivery end to end.
+1. **Re-run `supabase_setup.sql`** (adds `stripe_session_id` to `payments` for
+   dedupe, and adds the client's `id` to the portal RPC output).
+2. **Deploy the webhook function** — Supabase Dashboard → Edge Functions → Create a
+   function → name it `stripe-webhook` → paste the contents of `stripe-webhook.ts` →
+   Deploy.
+3. **Set function secrets** (Edge Functions → stripe-webhook → Secrets — never in code
+   or chat): `STRIPE_SECRET_KEY` (your sk_live_… key) and, once you've created the
+   webhook endpoint below, `STRIPE_WEBHOOK_SECRET` (the whsec_… signing secret).
+4. **Create the Stripe webhook** — Stripe Dashboard → Developers → Webhooks → Add
+   endpoint → URL is your function's URL (shown after deploy, looks like
+   `https://<project-ref>.supabase.co/functions/v1/stripe-webhook`) → listen for
+   `checkout.session.completed` → copy the signing secret into step 3.
+5. **Re-upload** `index.html` and `portal.html` (the Pay buttons now tag the Stripe
+   link with the client's ID so the webhook knows who paid).
 
 ### Re-upload for v7
-`index.html` — and re-run the SQL.
+`index.html`, `portal.html`, `supabase_setup.sql` (run it), plus deploy `stripe-webhook.ts`
+as an Edge Function.

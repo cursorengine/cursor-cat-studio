@@ -218,8 +218,6 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 .bell-item .bd{font-size:.7rem;color:var(--muted-2);font-family:var(--font-m);margin-top:3px}
 .bell-empty{padding:26px;text-align:center;color:var(--muted-2);font-size:.86rem}
 .menu-btn{display:none}
-.side-nav{display:none;gap:8px;flex-wrap:wrap;padding:14px 18px 12px;border-bottom:1px solid var(--line)}
-@media(max-width:860px){#dashBtn,#boardBtn,#planBtn,#newClientBtn{display:none}.side-nav{display:flex}}
 @media(max-width:860px){.menu-btn{display:grid}.sidebar.show{box-shadow:var(--sh)}}
 @media(max-width:640px){#dashBtn{display:none}.topbar{padding:0 14px}.top-actions{gap:7px}.tab-body{padding:18px 14px}.bell-panel{width:min(320px,92vw)}.client-head{padding:16px 16px}.brand img{height:30px}.doc{padding:26px 18px}}
 .linkbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
@@ -297,7 +295,6 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
     <div class="top-actions">
       <button class="btn-ghost btn btn-sm" id="dashBtn">Dashboard</button>
       <button class="btn-ghost btn btn-sm" id="boardBtn">Board</button>
-      <button class="btn-ghost btn btn-sm" id="planBtn">90-Day Plan</button>
       <button class="btn btn-sm" id="newClientBtn">+ New Client</button>
       <div style="position:relative">
         <button class="icon-btn" id="bellBtn" title="Notifications">&#128276;<span id="bellBadge" class="bell-badge hidden">0</span></button>
@@ -310,12 +307,6 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
-      <div class="side-nav">
-        <button class="btn-ghost btn btn-sm" onclick="showDashboard()">Dashboard</button>
-        <button class="btn-ghost btn btn-sm" onclick="showBoard()">Board</button>
-        <button class="btn-ghost btn btn-sm" onclick="showGrowth()">90-Day Plan</button>
-        <button class="btn btn-sm" onclick="newClient()">+ New Client</button>
-      </div>
       <div class="side-head"><input class="search" id="search" placeholder="Search clients..."/></div>
       <div class="pipeline" id="pipeline"></div>
       <div class="cl-list" id="clList"></div>
@@ -349,9 +340,9 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 var SB_URL_K='ccd_sb_url', SB_KEY_K='ccd_sb_key';
 var sb=null, clients=[], current=null, currentTab='details', filter='', demo=false;
 var OFFERS=['Free Strategy Plan','Audit Sprint','Local Lead Engine','Local Dominance'];
-var STAGES=['Prospect','Outreach Sent','Replied','Call Booked','Proposal Sent','Signed','Deposit Paid','Intake','Kick-off','Active','Closed'];
+var STAGES=['Prospect','Proposal Sent','Signed','Deposit Paid','Intake','Kick-off','Active','Closed'];
 var STAGE_COLOR={
-  'Prospect':['#eef0f3','#4d4f54'],'Outreach Sent':['#eef0f3','#4d4f54'],'Replied':['#e7eefc','#2f64e6'],'Call Booked':['#e7eefc','#2f64e6'],'Proposal Sent':['#e7eefc','#2f64e6'],
+  'Prospect':['#eef0f3','#4d4f54'],'Proposal Sent':['#e7eefc','#2f64e6'],
   'Signed':['#e7eefc','#2f64e6'],'Deposit Paid':['#e3f3ea','#1a7f37'],
   'Intake':['#fff2da','#9a6b00'],'Kick-off':['#fff2da','#9a6b00'],
   'Active':['#e3f3ea','#1a7f37'],'Closed':['#eef0f3','#7a7c83']
@@ -360,6 +351,7 @@ var DOC_TABS=[['details','Details'],['proposal','Proposal'],['agreement','Agreem
 
 /* ============================ HELPERS ============================ */
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function payLink(url,id){if(!url)return '';return url+(url.indexOf('?')>-1?'&':'?')+'client_reference_id='+encodeURIComponent(id||'');}
 function $(id){return document.getElementById(id);}
 function lines(raw){return String(raw||'').split('\n').map(function(s){return s.trim();}).filter(Boolean);}
 function pipes(raw){return lines(raw).map(function(l){var i=l.indexOf('|');return i<0?[l.trim(),'']:[l.slice(0,i).trim(),l.slice(i+1).trim()];});}
@@ -400,7 +392,7 @@ async function loadClients(){
   if(r.error){toast('Load failed: '+r.error.message);return;}
   clients=r.data||[];renderSidebar();
   if(current){current=clients.filter(function(c){return c.id===current.id;})[0]||null;}
-  await loadDashboard();await loadWeekly();await loadActivity();subscribeRealtime();
+  await loadDashboard();await loadActivity();subscribeRealtime();
   if(current&&currentTab==='payments')await loadPayments();
   renderMain();
 }
@@ -415,7 +407,7 @@ function blankClient(){
     gaps_raw:'',deliverables_raw:'',timeline_raw:'',line_items_raw:'',scope_raw:'',
     portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null,pay_link:'',monthly:''};
 }
-function newClient(){current=blankClient();currentTab='details';boardMode=false;growthMode=false;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
+function newClient(){current=blankClient();currentTab='details';renderSidebar();renderMain();}
 var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',pay_link:'https://buy.stripe.com/test_demo',
 gaps_raw:'Google Business Profile has 4 reviews and no photos; your top competitor averages 40+.\nWebsite loads in 7 seconds on mobile — visitors leave before they call.\nNot in the map pack for "plumber Calgary" — where 70% of local clicks go.',
 deliverables_raw:'Website Design & Build | 5-page lead-generating site, mobile-first, built to convert.\nGoogle Business Profile Setup | Full optimization: categories, photos, Q&A, review templates.\nCitation Cleanup | NAP consistency across 20+ directories.\nGoogle Ads Campaign | 2 ad groups, conversion tracking wired to your phone.\nDirect Access to Brent | You text the person doing the work.',
@@ -475,12 +467,12 @@ function renderSidebar(){
       '<div class="cl-sub">'+esc([c.contact_name,c.city].filter(Boolean).join(' · ')||c.offer||'')+'</div></div>';
   }).join('');
 }
-function selectClient(id){current=clients.filter(function(c){return c.id===id;})[0]||null;currentTab='details';boardMode=false;growthMode=false;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
+function selectClient(id){current=clients.filter(function(c){return c.id===id;})[0]||null;currentTab='details';boardMode=false;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
 
 /* ============================ MAIN ============================ */
 function renderMain(){
   var m=$('main');
-  if(!current){ if(growthMode){m.innerHTML=growthHTML();} else if(boardMode){m.innerHTML=boardHTML();} else {m.innerHTML=dashboardHTML();setTimeout(drawDashCharts,0);} return; }
+  if(!current){ if(boardMode){m.innerHTML=boardHTML();} else {m.innerHTML=dashboardHTML();setTimeout(drawDashCharts,0);} return; }
   var c=current;
   var head='<div class="client-head"><div class="ch-top"><div>'+
     '<div class="ch-name">'+esc(c.business||'New client')+'</div>'+
@@ -655,7 +647,7 @@ function renderInvoice(c){
     (c.tax?'<div class="totr"><div>'+esc(c.tax_label)+'</div><div>'+esc(c.tax)+'</div></div>':'')+
     '<div class="totr g"><div class="k">Total Due</div><div class="v chrome-text">'+esc(c.total||c.subtotal)+'</div></div></div>'+
     '<div class="dark" style="margin-top:30px"><h3>How to pay</h3><p style="color:#fff;font-family:var(--font-m);font-size:.82rem;line-height:2.1">Interac e-Transfer &nbsp;›&nbsp; brent@cursorcat.digital<br>Credit / Debit &nbsp;›&nbsp; pay via the link below</p></div>'+
-    (c.pay_link?'<div style="margin-top:14px"><a class="btn" href="'+esc(c.pay_link)+'" target="_blank" rel="noopener">Pay this invoice online →</a></div>':'')+
+    (c.pay_link?'<div style="margin-top:14px"><a class="btn" href="'+esc(payLink(c.pay_link,c.id))+'" target="_blank" rel="noopener">Pay this invoice online →</a></div>':'')+
     (c.deposit?'<p style="font-size:.85rem;color:var(--muted);margin-top:18px"><strong>Payment schedule:</strong> '+esc(c.deposit)+' deposit due to start. Balance on delivery.</p>':'')+
     '<p style="font-size:.85rem;color:var(--muted);margin-top:6px">Thank you for your business.</p>';
   return h+docFooter();
@@ -784,9 +776,9 @@ function dashboardHTML(){
   var todo=clients.filter(function(c){return ['Proposal Sent','Signed','Intake'].indexOf(c.stage)>=0;});
   var rem=reminders();
   var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">Dashboard</div><div class="ch-meta">Your studio at a glance</div></div>'+
-    '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="logMonthlyRetainers()">↻ Log retainers</button><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button></div></div></div>'+
+    '<div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="logMonthlyRetainers()">↻ Log retainers</button><button class="btn-ghost btn btn-sm" onclick="exportRevenue()">↓ Revenue CSV</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div>'+
     '<div class="tab-body"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px">'+
-      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('MRR',fmt(mrr()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+metric('Avg deal',fmt(avgDeal()))+metric('Win rate',winRate()+'%')+'</div>'+goalsHTML()+weeklyHTML()+
+      metric('Clients',String(clients.length))+metric('Open pipeline',fmt(pipelineValue()))+metric('MRR',fmt(mrr()))+metric('Collected all-time',fmt(allPaymentsTotal))+metric('Active clients',String(active))+metric('Avg deal',fmt(avgDeal()))+metric('Win rate',winRate()+'%')+'</div>'+
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:22px"><div class="card"><div class="mono" style="margin-bottom:10px">Revenue by month</div><div style="position:relative;height:200px"><canvas id="chRev"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Pipeline by stage</div><div style="position:relative;height:200px"><canvas id="chPipe"></canvas></div></div><div class="card"><div class="mono" style="margin-bottom:10px">Conversion funnel</div><div style="position:relative;height:200px"><canvas id="chFunnel"></canvas></div></div></div>';
   if(rem.length){h+='<div class="card" style="border-color:rgba(154,107,0,.45)"><div class="mono" style="margin-bottom:12px;color:#9a6b00">Reminders</div>'+
     rem.map(function(x){return '<div class="irow" style="cursor:pointer" onclick="selectClient(\''+x.c.id+'\')"><div class="ir-label">'+esc(x.c.business)+'</div><div class="v" style="color:#9a6b00;font-family:var(--font-b);font-weight:600;font-size:.84rem">'+esc(x.msg)+'</div></div>';}).join('')+'</div>';}
@@ -862,7 +854,7 @@ async function exportRevenue(){
   var csv=rows.map(function(row){return row.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var blob=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cursor-cat-revenue.csv';a.click();
 }
-function showDashboard(){current=null;boardMode=false;growthMode=false;currentTab='details';var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
+function showDashboard(){current=null;boardMode=false;currentTab='details';renderSidebar();renderMain();}
 
 /* ============================ v4: project tracking + charts ============================ */
 var tasks=[];
@@ -936,7 +928,6 @@ function copyAIPrompt(){
   var c=current||{};
   var p='You are a senior local-marketing strategist for an Alberta web design and growth studio.\n'+
     'Client: '+(c.business||'')+' in '+(c.city||'')+'. Website: '+(c.website||'(none)')+'. Top services: '+(c.top_services||'(unknown)')+'. Top competitor: '+(c.competitor||'(unknown)')+'. Offer: '+(c.offer||'')+'.\n\n'+
-    'Brand voice (Cursor Cat Digital): founder-led — they work directly with Brent, not a junior or offshore team; sell outcomes (booked jobs, calls) not deliverables; name the number; no buzzwords (no synergy / holistic / cutting-edge); always anchor the 90-day results-or-walk-away guarantee; only claim results actually produced.\n\n'+
     'Write, ready to paste into a CRM:\n'+
     '1) GAPS - 3 specific things holding them back online (one per line).\n'+
     '2) DELIVERABLES - 5 lines formatted "Title | Description".\n'+
@@ -948,7 +939,7 @@ function copyAIPrompt(){
 
 /* ============================ v6: kanban, command palette, MRR ============================ */
 var boardMode=false;
-function showBoard(){current=null;boardMode=true;growthMode=false;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
+function showBoard(){current=null;boardMode=true;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();renderMain();}
 function boardHTML(){
   var cols=STAGES.map(function(s){
     var items=clients.filter(function(c){return c.stage===s;});
@@ -956,7 +947,7 @@ function boardHTML(){
       items.map(function(c){return '<div class="kcard" draggable="true" ondragstart="dragStart(event,\''+c.id+'\')" onclick="selectClient(\''+c.id+'\')"><div class="kc-name">'+esc(c.business||'Untitled')+'</div><div class="kc-sub">'+esc([c.contact_name,c.total].filter(Boolean).join(' · '))+'</div></div>';}).join('')+
     '</div>';
   }).join('');
-  return '<div class="client-head"><div class="ch-top"><div><div class="ch-name">Pipeline</div><div class="ch-meta">Drag a client to change its stage</div></div></div></div><div class="board">'+cols+'</div>';
+  return '<div class="client-head"><div class="ch-top"><div><div class="ch-name">Pipeline</div><div class="ch-meta">Drag a client to change its stage</div></div><div class="ch-actions"><button class="btn-ghost btn btn-sm" onclick="showDashboard()">Dashboard</button><button class="btn btn-sm" onclick="newClient()">+ New Client</button></div></div></div><div class="board">'+cols+'</div>';
 }
 function dragStart(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move';}
 function allowDrop(ev){ev.preventDefault();ev.currentTarget.classList.add('drag-over');}
@@ -995,69 +986,6 @@ async function logMonthlyRetainers(){
   toast(n?('Logged '+n+' retainer(s)'):'Retainers already logged this month');await loadDashboard();renderMain();
 }
 
-/* ============================ v7: Growth HQ — goals, weekly inputs, 90-day plan ============================ */
-var GOALS={mrr:3600,revenue:15000,retainers:3};
-function activeRetainers(){return clients.filter(function(c){return ['Active','Kick-off'].indexOf(c.stage)>=0&&money(c.monthly)>0;}).length;}
-function goalBar(label,val,target,disp){var pct=target>0?Math.min(100,Math.round(val/target*100)):0;return '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:5px"><span style="color:var(--muted)">'+esc(label)+'</span><span style="font-family:var(--font-d);font-weight:700">'+disp(val)+' <span style="color:var(--muted-2);font-weight:400">/ '+disp(target)+'</span></span></div><div style="height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:99px"></div></div></div>';}
-function goalsHTML(){return '<div class="card" style="margin-bottom:22px"><div class="mono" style="margin-bottom:14px">90-day goals (from Growth HQ)</div>'+goalBar('MRR',mrr(),GOALS.mrr,function(v){return fmt(v);})+goalBar('Revenue collected',allPaymentsTotal,GOALS.revenue,function(v){return fmt(v);})+goalBar('Active retainers',activeRetainers(),GOALS.retainers,function(v){return String(Math.round(v));})+'</div>';}
-
-function weekStart(){var d=new Date();var day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10);}
-function leadsThisWeek(){var ws=weekStart();return clients.filter(function(c){return (c.created_at||'').slice(0,10)>=ws;}).length;}
-var weekRow=null;
-async function loadWeekly(){weekRow=null;if(demo||!sb)return;var r=await sb.from('weekly_log').select('*').eq('week_start',weekStart()).limit(1);if(!r.error&&r.data&&r.data.length)weekRow=r.data[0];}
-function weeklyHTML(){
-  var w=weekRow||{};
-  function row(label,id,v,target){return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="flex:1;font-size:.85rem;color:var(--muted)">'+label+'</span><input id="'+id+'" type="number" value="'+(v||0)+'" style="width:72px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;font-family:var(--font-b)"/><span class="mono" style="width:64px;text-align:right">/ '+target+'</span></div>';}
-  return '<div class="card" style="margin-bottom:22px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="mono">This week’s inputs (leading indicators)</div><button class="btn btn-sm" onclick="saveWeekly()">Save week</button></div>'+
-    row('Outreach touches','wk_outreach',w.outreach,'50–75')+
-    row('Replies','wk_replies',w.replies,'5–10')+
-    row('Strategy calls booked','wk_calls',w.calls,'3–5')+
-    row('Content pieces published','wk_content',w.content,'3')+
-    '<div style="display:flex;align-items:center;gap:10px;margin-top:6px"><span style="flex:1;font-size:.85rem;color:var(--muted)">New leads added (auto)</span><span style="font-family:var(--font-d);font-weight:700;width:72px;text-align:center">'+leadsThisWeek()+'</span><span class="mono" style="width:64px;text-align:right">/ 25+</span></div></div>';
-}
-async function saveWeekly(){
-  if(demo||!sb){toast('Connect Supabase first');return;}
-  var rec={week_start:weekStart(),outreach:parseInt(val('wk_outreach')||'0',10)||0,replies:parseInt(val('wk_replies')||'0',10)||0,calls:parseInt(val('wk_calls')||'0',10)||0,content:parseInt(val('wk_content')||'0',10)||0};
-  var r=await sb.from('weekly_log').upsert(rec,{onConflict:'week_start'}).select().single();
-  if(r.error){toast('Save failed: '+r.error.message);return;}
-  weekRow=r.data;toast('Week saved');
-}
-
-var growthMode=false, growthTasks=[];
-var GROWTH_PHASES=['Days 1–30 — Reposition & arm up','Days 31–60 — Outreach & first wins','Days 61–90 — Convert to recurring'];
-var GROWTH_PLAN=[
-  ['Days 1–30 — Reposition & arm up','Rewrite site around the trades niche + operator story'],
-  ['Days 1–30 — Reposition & arm up','Package the four offers (flat-rate)'],
-  ['Days 1–30 — Reposition & arm up','Build 3 portfolio / proof pieces'],
-  ['Days 1–30 — Reposition & arm up','Set up CRM + lead tracking'],
-  ['Days 1–30 — Reposition & arm up','Start founder-led outreach — 50/week'],
-  ['Days 31–60 — Outreach & first wins','Daily outreach + local authority content'],
-  ['Days 31–60 — Outreach & first wins','Run paid Audit Sprints'],
-  ['Days 31–60 — Outreach & first wins','Convert 1–3 into Lead Engine builds'],
-  ['Days 31–60 — Outreach & first wins','Document delivery into SOPs'],
-  ['Days 31–60 — Outreach & first wins','Harvest reviews + a case study from each'],
-  ['Days 61–90 — Convert to recurring','Turn build clients into Local Dominance retainers'],
-  ['Days 61–90 — Convert to recurring','Lean on referrals'],
-  ['Days 61–90 — Convert to recurring','Publish case studies'],
-  ['Days 61–90 — Convert to recurring','Lock in 3 retainers (~$3,600 MRR)']
-];
-function showGrowth(){current=null;boardMode=false;growthMode=true;var sd=$('sidebar');if(sd)sd.classList.remove('show');renderSidebar();loadGrowthTasks().then(renderMain);}
-async function loadGrowthTasks(){growthTasks=[];if(demo||!sb)return;var r=await sb.from('tasks').select('*').is('client_id',null).order('sort',{ascending:true});if(!r.error)growthTasks=r.data||[];}
-async function addGrowthTask(){var t=val('gt_title'),ph=val('gt_phase');if(!t){toast('Enter a task');return;}var r=await sb.from('tasks').insert({client_id:null,title:t,phase:ph,sort:growthTasks.length});if(r.error){toast('Add failed');return;}await loadGrowthTasks();renderMain();}
-async function toggleGrowth(id,d){var r=await sb.from('tasks').update({done:!d}).eq('id',id);if(r.error){toast('Update failed');return;}await loadGrowthTasks();renderMain();}
-async function delGrowth(id){var r=await sb.from('tasks').delete().eq('id',id);if(r.error){toast('Delete failed');return;}await loadGrowthTasks();renderMain();}
-async function loadGrowth90(){if(!confirm('Add the 90-day plan tasks?'))return;var rows=GROWTH_PLAN.map(function(p,i){return {client_id:null,phase:p[0],title:p[1],sort:i};});var r=await sb.from('tasks').insert(rows);if(r.error){toast('Failed: '+r.error.message);return;}toast('90-day plan added');await loadGrowthTasks();renderMain();}
-function growthHTML(){
-  var doneN=growthTasks.filter(function(t){return t.done;}).length,pct=growthTasks.length?Math.round(doneN/growthTasks.length*100):0;
-  var h='<div class="client-head"><div class="ch-top"><div><div class="ch-name">90-Day Growth Plan</div><div class="ch-meta">Your acquisition engine — '+doneN+'/'+growthTasks.length+' done</div></div></div></div><div class="tab-body" style="max-width:760px">';
-  if(demo){return h+'<p class="note">Connect Supabase to use the growth plan.</p></div>';}
-  h+='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong style="font-family:var(--font-d)">Progress</strong><span class="mono">'+pct+'%</span></div><div style="height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:99px"></div></div></div>';
-  if(!growthTasks.length){h+='<div class="card center" style="padding:30px"><p style="margin-bottom:14px">No growth tasks yet.</p><button class="btn" onclick="loadGrowth90()">Load the 90-day plan</button></div>';}
-  else{var phs={};growthTasks.forEach(function(t){(phs[t.phase]=phs[t.phase]||[]).push(t);});Object.keys(phs).forEach(function(ph){h+='<div class="card"><div class="mono" style="margin-bottom:10px">'+esc(ph)+'</div>'+phs[ph].map(function(t){return '<div class="irow"><label class="ir-label" style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" '+(t.done?'checked':'')+' onclick="toggleGrowth(\''+t.id+'\','+(t.done?'true':'false')+')"/> <span style="'+(t.done?'text-decoration:line-through;color:var(--muted-2)':'')+'">'+esc(t.title)+'</span></label><button class="btn-ghost btn btn-sm btn-danger" onclick="delGrowth(\''+t.id+'\')">×</button></div>';}).join('')+'</div>';});}
-  h+='<div class="card"><div class="mono" style="margin-bottom:10px">Add a task</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"><input id="gt_title" placeholder="Task" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/><select id="gt_phase" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)">'+GROWTH_PHASES.map(function(p){return '<option>'+esc(p)+'</option>';}).join('')+'</select></div><button class="btn" style="margin-top:10px" onclick="addGrowthTask()">+ Add task</button></div>';
-  return h+'</div>';
-}
-
 /* ============================ WIRE-UP ============================ */
 $('loginForm').addEventListener('submit',doLogin);
 $('dashBtn').addEventListener('click',showDashboard);
@@ -1079,7 +1007,6 @@ $('saveSettings').addEventListener('click',function(){
 });
 function openSettings(force){var c=getCfg();$('sbUrl').value=c.url;$('sbKey').value=c.key;$('settingsOverlay').classList.add('open');if(force)$('login').classList.remove('hidden');}
 $('boardBtn').addEventListener('click',showBoard);
-$('planBtn').addEventListener('click',showGrowth);
 $('cmdkInput').addEventListener('input',function(e){renderCmd(e.target.value);});
 $('cmdkInput').addEventListener('keydown',function(e){if(e.key==='Enter'){runCmd(0);}else if(e.key==='Escape'){closeCmd();}});
 $('cmdk').addEventListener('click',function(e){if(e.target===$('cmdk'))closeCmd();});
