@@ -411,7 +411,7 @@ function blankClient(){
     subtotal:'',tax_label:'GST (5%)',tax:'',total:'',deposit:'',balance:'',weeks:'6',
     gaps_raw:'',deliverables_raw:'',timeline_raw:'',line_items_raw:'',scope_raw:'',
     portal_token:'',intake_submitted:false,signed_proposal:null,signed_agreement:null,pay_link:'',monthly:'',
-    welcome_video_url:'',welcome_note:''};
+    welcome_video_url:'',welcome_note:'',referred_by:null};
 }
 function newClient(){current=blankClient();currentTab='details';renderSidebar();renderMain();}
 var SAMPLE={id:'demo-1',business:"Smith's Plumbing",contact_name:'Jane Smith',city:'Calgary',email:'jane@smithsplumbing.ca',phone:'403-555-1234',offer:'Local Lead Engine',stage:'Proposal Sent',website:'smithsplumbing.ca',gbp_url:'',service_areas:'Calgary & surrounding',top_services:'Drain cleaning, water heaters, repairs',avg_job_value:'$650',target_jobs:'15',competitor:'ABC Plumbing',notes:'',goal:'more booked jobs from Google in the next 90 days',start_week:'the week of July 7',proposal_num:'CCD-001',agreement_num:'CCD-SA-001',invoice_num:'CCD-INV-001',packet_num:'CCD-WP-001',doc_date:'July 2, 2026',subtotal:'$4,500',tax_label:'GST (5%)',tax:'$225',total:'$4,725',deposit:'$2,362.50',balance:'$2,362.50',weeks:'6',pay_link:'https://buy.stripe.com/test_demo',
@@ -427,9 +427,10 @@ async function saveClient(){
     'top_services','avg_job_value','target_jobs','competitor','notes','goal','start_week','proposal_num',
     'agreement_num','invoice_num','packet_num','doc_date','subtotal','tax_label','tax','total','deposit',
     'balance','weeks','gaps_raw','deliverables_raw','timeline_raw','line_items_raw','scope_raw','pay_link','monthly',
-    'welcome_video_url','welcome_note'];
+    'welcome_video_url','welcome_note','referred_by'];
   var rec={};f.forEach(function(k){var e=$('f_'+k);if(e)rec[k]=e.value;});
   if(!rec.business){toast('Business name is required');return;}
+  if(!rec.referred_by)rec.referred_by=null;
   if(demo){Object.assign(current,rec);toast('Demo mode — not saved to database');renderSidebar();renderMain();return;}
   var r;
   if(current.id){r=await sb.from('clients').update(rec).eq('id',current.id).select().single();}
@@ -483,7 +484,7 @@ function renderMain(){
   var c=current;
   var head='<div class="client-head"><div class="ch-top"><div>'+
     '<div class="ch-name">'+esc(c.business||'New client')+'</div>'+
-    '<div class="ch-meta">'+esc([c.contact_name,c.city?c.city+', Alberta':''].filter(Boolean).join(' · ')||'Unsaved')+'</div></div>'+
+    '<div class="ch-meta">'+esc([c.contact_name,c.city?c.city+', Alberta':''].filter(Boolean).join(' · ')||'Unsaved')+(referrerName(c)?' · <span style="color:var(--accent)">Referred by '+esc(referrerName(c))+'</span>':'')+'</div></div>'+
     '<div class="ch-actions">'+stageSelect(c)+
       ((c.id&&!demo)?'<button class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal link</button>':'')+
       ((currentTab!=='details'&&currentTab!=='payments'&&currentTab!=='project'&&currentTab!=='invoice'&&currentTab!=='results'&&currentTab!=='updates')?'<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button>':'')+
@@ -494,6 +495,17 @@ function renderMain(){
   var inner=currentTab==='details'?detailsForm(c):(currentTab==='payments'?renderPayments(c):(currentTab==='project'?renderProject(c):(currentTab==='invoice'?renderInvoicesTab(c):(currentTab==='results'?renderResultsTab(c):(currentTab==='updates'?renderUpdatesTab(c):docPreview(c))))));
   m.innerHTML=head+'<div class="tab-body">'+inner+'</div>';
   m.scrollTop=0;
+}
+function referredBySelect(c){
+  var opts='<option value="">— none —</option>'+clients.filter(function(x){return x.id&&x.id!==c.id;}).map(function(x){
+    return '<option value="'+x.id+'"'+(c.referred_by===x.id?' selected':'')+'>'+esc(x.business||'(unnamed)')+'</option>';
+  }).join('');
+  return '<div class="field"><label>Referred by</label><select id="f_referred_by">'+opts+'</select><span class="hint">Auto-fills when they come through a client\'s referral link — or set it by hand.</span></div>';
+}
+function referrerName(c){
+  if(!c.referred_by)return '';
+  var m=clients.filter(function(x){return x.id===c.referred_by;})[0];
+  return m?m.business:'';
 }
 function stageSelect(c){
   return '<select onchange="quickStage(this.value)" style="font-family:var(--font-m);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;padding:8px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink)">'+
@@ -514,8 +526,8 @@ function toggleAcc(k){var b=document.getElementById('acc-'+k);if(!b)return;var o
 function detailsForm(c){
   if(accState===null){var wide=window.innerWidth>860;accState={who:true,meta:wide,money:wide,blocks:wide,intake:wide,portal:wide};}
   function sec(key,title,body){var open=accState[key];return '<section class="acc"><button type="button" class="acc-h" onclick="toggleAcc(\''+key+'\')">'+esc(title)+'<span class="chev" id="chev-'+key+'">'+(open?'–':'+')+'</span></button><div class="acc-body'+(open?' open':'')+'" id="acc-'+key+'"><div class="form-grid">'+body+'</div></div></section>';}
-  var links=(c.id&&!demo)?'<div class="linkbar"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'portal\')">✉ Email portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'proposal\')">✉ Email proposal</button></div>':'';
-  var who=fld('Business name','business',c)+fld('Contact name','contact_name',c)+fld('City','city',c)+fld('Email','email',c)+fld('Phone','phone',c)+fld('Offer','offer',c,{type:'select',opts:OFFERS})+fld('Pipeline stage','stage',c,{type:'select',opts:STAGES})+fld('Goal (used in welcome packet)','goal',c);
+  var links=(c.id&&!demo)?'<div class="linkbar"><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'proposal\')">⧉ Sign proposal</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'agreement\')">⧉ Sign agreement</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'intake\')">⧉ Intake</button><button type="button" class="btn-ghost btn btn-sm" onclick="copyLink(\'referral\')">⧉ Referral link</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'portal\')">✉ Email portal</button><button type="button" class="btn-ghost btn btn-sm" onclick="emailLink(\'proposal\')">✉ Email proposal</button></div>':'';
+  var who=fld('Business name','business',c)+fld('Contact name','contact_name',c)+fld('City','city',c)+fld('Email','email',c)+fld('Phone','phone',c)+fld('Offer','offer',c,{type:'select',opts:OFFERS})+fld('Pipeline stage','stage',c,{type:'select',opts:STAGES})+fld('Goal (used in welcome packet)','goal',c)+referredBySelect(c);
   var meta=fld('Date','doc_date',c)+fld('Start week (welcome)','start_week',c,{ph:'the week of July 7'})+fld('Proposal #','proposal_num',c)+fld('Agreement #','agreement_num',c)+fld('Invoice #','invoice_num',c)+fld('Packet #','packet_num',c);
   var money='<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="applyPreset()">⚡ Load preset for this offer</button><span class="hint">Fills pricing, line items, deliverables, timeline &amp; scope from the selected offer.</span></div>'+fld('Subtotal','subtotal',c,{ph:'$4,500'})+fld('Total','total',c,{ph:'$4,725'})+fld('Tax label','tax_label',c)+fld('Tax','tax',c,{ph:'$225'})+fld('Deposit','deposit',c,{ph:'$2,250'})+fld('Balance','balance',c,{ph:'$2,250'})+fld('Timeline (weeks)','weeks',c)+fld('Monthly retainer ($/mo, for MRR)','monthly',c,{ph:'$1,500'})+fld('Payment link (paste a Stripe Payment Link)','pay_link',c,{full:true,ph:'https://buy.stripe.com/...'});
   var blocks='<div class="field full"><button type="button" class="btn-ghost btn btn-sm" style="align-self:flex-start" onclick="copyAIPrompt()">✨ Copy AI brief prompt</button><span class="hint">Copies a prompt to paste into Claude / ChatGPT; paste its answer back into the boxes below.</span></div>'+fld('Gaps — one per line','gaps_raw',c,{type:'area',full:true,big:90,hint:'Each line becomes a “what’s holding you back” item.'})+fld('Deliverables — "Title | Description" per line','deliverables_raw',c,{type:'area',full:true,big:110})+fld('Timeline — "Week | Description" per line','timeline_raw',c,{type:'area',full:true,big:90})+fld('Line items — "Label | Value" per line','line_items_raw',c,{type:'area',full:true,big:90,hint:'Drives the proposal investment table and the invoice.'})+fld('Scope — one per line (agreement)','scope_raw',c,{type:'area',full:true,big:90});
@@ -690,7 +702,15 @@ async function ensureToken(){
   if(r.error){toast('Could not create link: '+r.error.message);return null;}
   current.portal_token=t;return t;
 }
+var CCD_SITE='https://cursorcat.digital/';
 async function copyLink(kind){
+  if(kind==='referral'){
+    if(!current||!current.id){toast('Save the client first');return;}
+    var rurl=CCD_SITE+'?ref='+encodeURIComponent(current.id);
+    try{await navigator.clipboard.writeText(rurl);toast('Referral link copied');}
+    catch(e){prompt('Copy this link:',rurl);}
+    return;
+  }
   var t=await ensureToken();if(!t)return;
   var page=kind==='intake'?'intake.html?':kind==='proposal'?'sign.html?doc=proposal&':kind==='agreement'?'sign.html?doc=agreement&':'portal.html?';
   var url=siteBase()+page+'t='+encodeURIComponent(t);

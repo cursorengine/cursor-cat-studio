@@ -14,12 +14,15 @@ function videoEmbed(url){
   if(src)return '<div class="video-wrap"><iframe src="'+esc(src)+'" allow="autoplay; fullscreen" allowfullscreen></iframe></div>';
   return '<p style="margin-bottom:14px"><a class="btn ghost" href="'+esc(url)+'" target="_blank" rel="noopener">▶ Watch my welcome video</a></p>';
 }
+function emptyRow(msg){return '<p class="note">'+esc(msg)+'</p>';}
 function resultsBlock(list){
-  if(!list||!list.length)return '';
+  list=list||[];
+  var h='<div class="card"><div class="sec-h">Your results</div>';
+  if(!list.length)return h+emptyRow('Your monthly results (leads, calls, jobs booked) will show up here after your first reporting month.')+'</div>';
   var latest=list[0],rest=list.slice(1);
   var stats=[['Leads',latest.leads],['Calls',latest.calls],['Jobs booked',latest.jobs],['Ad spend',latest.ad_spend]]
     .filter(function(x){return x[1];}).map(function(x){return '<div class="stat"><div class="l">'+esc(x[0])+'</div><div class="v">'+esc(x[1])+'</div></div>';}).join('');
-  var h='<div class="card"><div class="sec-h">Your results — '+esc(latest.month||'')+'</div>'+
+  h+='<div class="mono" style="margin-bottom:8px">'+esc(latest.month||'')+'</div>'+
     (stats?'<div class="stats">'+stats+'</div>':'')+
     (latest.notes?'<p class="note">'+esc(latest.notes)+'</p>':'');
   if(rest.length){
@@ -29,12 +32,13 @@ function resultsBlock(list){
   return h+'</div>';
 }
 function projectBlock(tasks){
-  if(!tasks||!tasks.length)return '';
+  tasks=tasks||[];
+  var h='<div class="card"><div class="sec-h">Your project</div>';
+  if(!tasks.length)return h+emptyRow('Your project plan will appear here once the build kicks off.')+'</div>';
   var doneN=tasks.filter(function(t){return t.done;}).length,pct=Math.round(doneN/tasks.length*100);
   var byPhase={},order=[];
   tasks.forEach(function(t){if(!byPhase[t.phase]){byPhase[t.phase]=[];order.push(t.phase);}byPhase[t.phase].push(t);});
-  var h='<div class="card"><div class="sec-h">Your project</div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="note">Progress</span><span class="mono">'+pct+'%</span></div>'+
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="note">Progress</span><span class="mono">'+pct+'%</span></div>'+
     '<div class="prog"><i style="width:'+pct+'%"></i></div>';
   order.forEach(function(ph){
     h+='<div class="mono" style="margin:16px 0 8px">'+esc(ph)+'</div>'+
@@ -43,8 +47,10 @@ function projectBlock(tasks){
   return h+'</div>';
 }
 function updatesBlock(list){
-  if(!list||!list.length)return '';
-  return '<div class="card"><div class="sec-h">Updates from Brent</div><div class="updates">'+
+  list=list||[];
+  var h='<div class="card"><div class="sec-h">Updates from Brent</div>';
+  if(!list.length)return h+emptyRow('No updates posted yet — check back here any time for progress notes.')+'</div>';
+  return h+'<div class="updates">'+
     list.map(function(u){return '<div class="update"><div class="dt">'+esc(new Date(u.created_at).toLocaleDateString('en-CA',{year:'numeric',month:'short',day:'numeric'}))+'</div>'+esc(u.body)+'</div>';}).join('')+
     '</div></div>';
 }
@@ -52,24 +58,35 @@ function documentsBlock(d){
   var rows=[];
   if(d.signed_proposal)rows.push({t:'Proposal'+(d.proposal_num?' #'+d.proposal_num:''),go:'sign.html?doc=proposal&t='+encodeURIComponent(TOKEN)});
   if(d.signed_agreement)rows.push({t:'Service Agreement'+(d.agreement_num?' #'+d.agreement_num:''),go:'sign.html?doc=agreement&t='+encodeURIComponent(TOKEN)});
-  if(!rows.length)return '';
-  return '<div class="card"><div class="sec-h">Your documents</div>'+
-    rows.map(function(r){return '<div class="step"><div><div class="t">'+esc(r.t)+'</div><div class="d">Signed &amp; on file</div></div><a class="btn done go" href="'+r.go+'">View</a></div>';}).join('')+
+  var h='<div class="card"><div class="sec-h">Your documents</div>';
+  if(!rows.length)return h+emptyRow('Your signed proposal and agreement will be filed here once you sign them above.')+'</div>';
+  return h+rows.map(function(r){return '<div class="step"><div><div class="t">'+esc(r.t)+'</div><div class="d">Signed &amp; on file</div></div><a class="btn done go" href="'+r.go+'">View</a></div>';}).join('')+
     '</div>';
 }
 function invoicesBlock(list){
-  if(!list||!list.length)return '';
-  return '<div class="card"><div class="sec-h">Your invoices</div>'+
-    list.map(function(i){
+  list=list||[];
+  var h='<div class="card"><div class="sec-h">Your invoices</div>';
+  if(!list.length)return h+emptyRow('Invoices will appear here as they\'re issued.')+'</div>';
+  return h+list.map(function(i){
       return '<div class="step"><div><div class="t">'+esc(i.invoice_num?'#'+i.invoice_num:'Invoice')+' — '+esc(i.kind||'')+'</div>'+
         '<div class="d">'+esc(i.total||'')+(i.status==='Paid'?' · Paid':' · Unpaid')+'</div></div>'+
         '<a class="btn '+(i.status==='Paid'?'done':'')+' go" href="invoice.html?t='+encodeURIComponent(TOKEN)+'&inv='+encodeURIComponent(i.id)+'">View</a></div>';
     }).join('')+'</div>';
 }
-function referralBlock(){
+function copyReferralLink(id){
+  var url='https://cursorcat.digital/?ref='+encodeURIComponent(id||'');
+  var btn=gel('refCopyBtn');
+  function ok(){if(btn)btn.textContent='Copied ✓';setTimeout(function(){if(btn)btn.textContent='Copy my referral link';},2000);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(ok).catch(function(){prompt('Copy this link:',url);});}
+  else{prompt('Copy this link:',url);}
+}
+function referralBlock(d){
   return '<div class="ref-card"><div class="eyebrow">Know a business that needs this?</div>'+
-    '<p style="color:var(--ink);margin-bottom:14px">Send them our way — if they sign on, you get <span class="amt chrome-text">$100</span>.</p>'+
-    '<a class="btn" href="mailto:brent@cursorcat.digital?subject=A%20referral%20for%20you&body=Hey%20Brent%2C%20I%20want%20to%20refer%20a%20business%20your%20way.">Send a referral →</a></div>';
+    '<p style="color:var(--ink);margin-bottom:14px">Send them our way — if they sign on, you get <span class="amt chrome-text">$100</span>. Your link is tagged to you, so we always know it was your referral.</p>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+    '<button class="btn" id="refCopyBtn" onclick="copyReferralLink(\''+esc(d.id)+'\')">Copy my referral link</button>'+
+    '<a class="btn ghost" href="mailto:brent@cursorcat.digital?subject=A%20referral%20for%20you&body=Hey%20Brent%2C%20I%20want%20to%20refer%20a%20business%20your%20way.">Email Brent instead →</a>'+
+    '</div></div>';
 }
 function render(d){
   var steps=[
@@ -92,7 +109,7 @@ function render(d){
   h+=updatesBlock(d.updates);
   h+=invoicesBlock(d.invoices);
   h+=documentsBlock(d);
-  h+=referralBlock();
+  h+=referralBlock(d);
   h+='<div class="dark"><h3>Questions any time?</h3><p style="font-family:var(--font-m);font-size:.8rem;line-height:2">brent@cursorcat.digital &nbsp;·&nbsp; 587-986-3069</p></div>';
   if(doneN===steps.length){h+='<div class="muted-card center"><strong>You are all set 🎉</strong> Everything is in. I will be in touch to kick things off.</div>';}
   gel('root').innerHTML=h+'';

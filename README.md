@@ -393,3 +393,47 @@ referral reason to talk about you. Plus a mobile/UI pass across all the client p
 
 ### Re-upload for v10
 `index.html`, `portal.html`, `sign.html`, `brand.css` — and re-run the SQL.
+
+---
+
+## v11 — referral tracking, a real lead-capture fix, and always-visible sections
+
+Two things prompted this release: the v10 Results/Project/Updates/Documents sections
+were disappearing entirely whenever there was no data yet, which looked like they were
+missing rather than just empty — and building real referral tracking surfaced a
+pre-existing bug where new leads from the website were never actually reaching this
+app (see below).
+
+### One-time setup
+1. **Re-run `supabase_setup.sql`.** Adds `referred_by` to clients and a new
+   `create_lead` function.
+2. **Re-upload** `portal.html` and `index.html` (studio), and **`index.html` from
+   `CCD WEBSITE`** (the marketing site's contact form).
+
+### The lead-capture bug (found, not introduced, by this release)
+The marketing site's contact form has been trying to insert new leads directly into
+`public.clients` using the public anon key. The `clients` table has been locked to
+signed-in users only since v1 — so that insert was always being silently rejected by
+Postgres's row-level security. Leads still reached you by email (via the Netlify form
+submission, which is separate), but they were never landing in Cursor Cat Studio on
+their own. Fixed by routing that insert through a new `create_lead` function — a
+narrow, single-purpose RPC that's safe to expose to anonymous visitors (it can only
+create a new Prospect, nothing else).
+
+### What's new
+- **Referral tracking, for real.** Every client's portal now has a **Copy my referral
+  link** button (`https://cursorcat.digital/?ref=<their id>`), not just a mailto. When
+  someone submits the contact form after arriving via that link, `create_lead`
+  validates the id and attaches `referred_by` to the new record automatically.
+- **"Referred by" in the app.** The client header shows "Referred by [business]" when
+  set. Details tab has a **Referred by** dropdown too, so you can set or correct it by
+  hand — useful when someone mentions a referral verbally instead of using the link.
+  A **⧉ Referral link** button sits in the Details linkbar for copying a client's link
+  from your side.
+- **Sections no longer vanish when empty.** Results, Project, Updates, and Documents
+  each now show a plain-language placeholder ("Your results will show up here after
+  your first month," etc.) instead of disappearing — so the feature is visibly there
+  from day one, not just once there's data in it.
+
+### Re-upload for v11
+`supabase_setup.sql` (run it), `portal.html`, studio `index.html`, and `CCD WEBSITE/index.html`.

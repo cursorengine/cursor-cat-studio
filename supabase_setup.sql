@@ -653,3 +653,37 @@ begin
       from public.tasks t where t.client_id = r.id)
   );
 end $$;
+
+-- ============================================================================
+-- v11 — referral tracking (+ fixes a pre-existing bug in the lead form)
+-- ============================================================================
+-- The marketing site's contact form has been trying to insert new leads
+-- straight into public.clients using the anon key. That's always been blocked
+-- by RLS (the clients_authenticated_all policy only allows the `authenticated`
+-- role) — so leads from the website were never actually landing in this app,
+-- silently. This adds a narrow, anon-safe RPC for exactly that one action, and
+-- a referred_by column so a referral can be traced back to the client who
+-- sent it (needed for the $100 referral payout to actually be payable).
+
+alter table public.clients add column if not exists referred_by uuid references public.clients(id) on delete set null;
+
+create or replace function public.create_lead(
+  p_contact_name text, p_business text, p_email text, p_phone text,
+  p_offer text, p_notes text, p_referred_by uuid default null
+)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare new_id uuid; ref_ok uuid;
+begin
+  -- only attach referred_by if it's a real, existing client — never trust
+  -- the incoming value blindly since this function is callable by anon
+  if p_referred_by is not null then
+    select id into ref_ok from public.clients where id = p_referred_by;
+  end if;
+  insert into public.clients (contact_name, business, email, phone, offer, notes, stage, referred_by)
+  values (coalesce(p_contact_name,''), coalesce(p_business,''), coalesce(p_email,''), coalesce(p_phone,''),
+          coalesce(p_offer,'Local Lead Engine'), coalesce(p_notes,''), 'Prospect', ref_ok)
+  returning id into new_id;
+  return new_id;
+end $$;
+revoke all on function public.create_lead(text,text,text,text,text,text,uuid) from public;
+grant execute on function public.create_lead(text,text,text,text,text,text,uuid) to anon, authenticated;
