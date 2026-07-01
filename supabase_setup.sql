@@ -440,3 +440,29 @@ begin
     'line_items_raw',r.line_items_raw,'scope_raw',r.scope_raw
   );
 end $$;
+
+-- ============================================================================
+-- v8 — invoice view on the client portal
+-- ============================================================================
+
+-- adds invoice_num + email (needed to render the invoice on invoice.html)
+create or replace function public.get_portal(p_token text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'id',r.id,
+    'business',r.business,'contact_name',r.contact_name,'city',r.city,'email',r.email,'offer',r.offer,
+    'stage',r.stage,'goal',r.goal,'start_week',r.start_week,'doc_date',r.doc_date,
+    'intake_submitted',r.intake_submitted,
+    'signed_proposal',(r.signed_proposal is not null),
+    'signed_agreement',(r.signed_agreement is not null),
+    'proposal_num',r.proposal_num,'agreement_num',r.agreement_num,'invoice_num',r.invoice_num,
+    'total',r.total,'deposit',r.deposit,'balance',r.balance,'weeks',r.weeks,
+    'subtotal',r.subtotal,'tax_label',r.tax_label,'tax',r.tax,'pay_link',r.pay_link,
+    'gaps_raw',r.gaps_raw,'deliverables_raw',r.deliverables_raw,'timeline_raw',r.timeline_raw,
+    'line_items_raw',r.line_items_raw,'scope_raw',r.scope_raw
+  );
+end $$;

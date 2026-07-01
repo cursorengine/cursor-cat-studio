@@ -16,10 +16,12 @@ Backed by **Supabase**. Hosts as a **static site** (GitHub Pages). No build step
 | `portal.html` | Client-facing portal — live progress tracker + links (one per client). |
 | `intake.html` | Client-facing self-serve intake form. |
 | `sign.html` | Client-facing e-signature page for proposal / agreement. |
+| `invoice.html` | Client-facing invoice view — line items, totals, e-transfer info, Pay button. |
 | `config.js` | Your Supabase URL + anon key (used by the client-facing pages). |
 | `brand.css` | Shared styling for the client-facing pages. |
 | `docs.js` | Shared document rendering for the signing page. |
 | `supabase_setup.sql` | Database schema + security. Run once in Supabase. |
+| `stripe-webhook.ts` | Supabase Edge Function — auto-logs Stripe payments (see v7 below). |
 | `crestcatccdlogo.png`, `navbar-logo.png` | Logos (icon + wordmark). |
 | `README.md` | This file. |
 
@@ -282,3 +284,27 @@ instead of you having to remember to flip the stage or type it in.
 ### Re-upload for v7
 `index.html`, `portal.html`, `supabase_setup.sql` (run it), plus deploy `stripe-webhook.ts`
 as an Edge Function.
+
+---
+
+## v8 — invoice view on the client portal
+
+Before v8, a client's portal had a bare "Pay" button with no way to see what they were
+actually paying for. Now there's a real invoice page — same line items, subtotal, tax,
+and total as the Invoice tab in the app, plus the e-transfer instructions and the Pay
+button.
+
+### One-time setup
+**Re-run `supabase_setup.sql`** (adds `invoice_num` and `email` to the portal RPC).
+Re-upload `portal.html` and upload the new `invoice.html`.
+
+### What's new
+- **`invoice.html?t=…`** — a client-facing invoice page (token-gated, same pattern as
+  portal/intake/sign). Shows Bill To, line items, subtotal/tax/total, how to pay
+  (e-Transfer + the Pay button), and the payment schedule note.
+- **"View your invoice" link on the portal** — appears above the Pay button whenever a
+  client has a total set, so they can see the breakdown before paying, or just to check
+  what they owe without emailing you.
+
+### Re-upload for v8
+`portal.html`, `invoice.html` — and re-run the SQL.
