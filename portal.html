@@ -2,7 +2,6 @@
 <script>
 var sb=(window.CCD&&window.CCD.url)?window.supabase.createClient(window.CCD.url,window.CCD.key):null;var TOKEN=new URLSearchParams(location.search).get('t')||'';function gel(id){return document.getElementById(id);}
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function payLink(url,id){if(!url)return '';return url+(url.indexOf('?')>-1?'&':'?')+'client_reference_id='+encodeURIComponent(id||'');}
 function fail(m){gel('root').innerHTML='<div class="card center" style="padding:46px"><h2 style="margin-bottom:8px">Link not found</h2><p>'+esc(m||'This portal link is not valid. Please use the link we emailed you, or contact brent@cursorcat.digital.')+'</p></div>';}
 function confetti(){var cv=gel('cfx'),x=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;var P=[],C=['#2f64e6','#1a7f37','#08090a','#7a7c83'];for(var i=0;i<120;i++)P.push({x:Math.random()*cv.width,y:-20-Math.random()*cv.height,r:4+Math.random()*5,c:C[i%4],s:2+Math.random()*3,a:Math.random()*6});var t=0;(function loop(){t++;x.clearRect(0,0,cv.width,cv.height);P.forEach(function(p){p.y+=p.s;p.x+=Math.sin((p.y+p.a)/30);x.fillStyle=p.c;x.fillRect(p.x,p.y,p.r,p.r);});if(t<160)requestAnimationFrame(loop);else x.clearRect(0,0,cv.width,cv.height);})();}
 function render(d){
@@ -19,8 +18,14 @@ function render(d){
     return '<div class="step'+(s.done?' done':'')+'"><div class="ck">'+(s.done?'✓':'')+'</div><div><div class="t">'+esc(s.t)+'</div><div class="d">'+(s.done?'Done — thank you':'Tap to complete')+'</div></div><a class="btn '+(s.done?'done':'')+' go" href="'+s.go+'">'+(s.done?'View':'Start')+'</a></div>';
   }).join('')+'</div>';
   if(d.start_week){h+='<div class="muted-card">🚀 Your build kicks off '+esc(d.start_week)+'.</div>';}
-  if(d.total){h+='<a class="btn ghost full" style="margin-bottom:10px" href="invoice.html?t='+encodeURIComponent(TOKEN)+'">View your invoice →</a>';}
-  if(d.pay_link){h+='<a class="btn full" style="margin-bottom:14px" href="'+esc(payLink(d.pay_link,d.id))+'" target="_blank" rel="noopener">Pay your deposit &rarr;</a>';}
+  if(d.invoices&&d.invoices.length){
+    h+='<div class="card" style="margin-bottom:14px"><strong style="font-family:var(--font-d);display:block;margin-bottom:10px">Your invoices</strong>'+
+      d.invoices.map(function(i){
+        return '<div class="step" style="padding:10px 0"><div><div class="t">'+esc(i.invoice_num?'#'+i.invoice_num:'Invoice')+' — '+esc(i.kind||'')+'</div>'+
+          '<div class="d">'+esc(i.total||'')+(i.status==='Paid'?' · Paid':' · Unpaid')+'</div></div>'+
+          '<a class="btn '+(i.status==='Paid'?'done':'')+' go" href="invoice.html?t='+encodeURIComponent(TOKEN)+'&inv='+encodeURIComponent(i.id)+'">View</a></div>';
+      }).join('')+'</div>';
+  }
   h+='<div class="dark"><h3>Questions any time?</h3><p style="font-family:var(--font-m);font-size:.8rem;line-height:2">brent@cursorcat.digital &nbsp;·&nbsp; 587-986-3069</p></div>';
   if(doneN===steps.length){h+='<div class="muted-card center"><strong>You are all set 🎉</strong> Everything is in. I will be in touch to kick things off.</div>';}
   gel('root').innerHTML=h+'';

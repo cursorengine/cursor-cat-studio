@@ -5,9 +5,11 @@
 //
 // What it does: verifies the request really came from Stripe, then — on a
 // checkout.session.completed event (fires when someone pays through one of
-// your pasted Payment Links) — logs the payment against the matching client
-// in Supabase and drops a note in the activity feed (which lights up the
-// notification bell and Dashboard automatically).
+// your pasted Payment Links) — looks up which invoice that Payment Link was
+// for (via client_reference_id, which the app tags onto every Pay button with
+// the invoice's own id), logs the payment against that invoice's client,
+// marks the invoice Paid, and drops a note in the activity feed (which lights
+// up the notification bell and Dashboard automatically).
 //
 // Secrets to set (Supabase Dashboard -> Edge Functions -> stripe-webhook ->
 // Secrets — NOT in this file, and NOT pasted into chat):
@@ -48,34 +50,46 @@ Deno.serve(async (req) => {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const clientId = session.client_reference_id;
+    const invoiceId = session.client_reference_id;
     const amount = (session.amount_total ?? 0) / 100;
 
-    if (clientId) {
-      const { data: client } = await supabase
-        .from("clients")
-        .select("business")
-        .eq("id", clientId)
+    if (invoiceId) {
+      const { data: invoice } = await supabase
+        .from("invoices")
+        .select("id, client_id, invoice_num")
+        .eq("id", invoiceId)
         .maybeSingle();
 
-      // unique index on stripe_session_id means a retried Stripe delivery
-      // never double-logs the same payment
-      const { error } = await supabase.from("payments").insert({
-        client_id: clientId,
-        amount,
-        kind: "Stripe payment",
-        note: "Paid online via Stripe",
-        stripe_session_id: session.id,
-      });
+      if (invoice) {
+        const { data: client } = await supabase
+          .from("clients")
+          .select("business")
+          .eq("id", invoice.client_id)
+          .maybeSingle();
 
-      if (error && !String(error.message).includes("duplicate key")) {
-        console.error("Insert payment failed:", error);
-      } else if (!error) {
-        await supabase.from("activity").insert({
-          client_id: clientId,
-          type: "payment",
-          title: (client?.business || "A client") + " paid $" + amount.toFixed(2) + " via Stripe",
+        // unique index on stripe_session_id means a retried Stripe delivery
+        // never double-logs the same payment
+        const { error } = await supabase.from("payments").insert({
+          client_id: invoice.client_id,
+          amount,
+          kind: "Stripe payment",
+          note: "Paid online via Stripe" + (invoice.invoice_num ? " — Invoice #" + invoice.invoice_num : ""),
+          stripe_session_id: session.id,
         });
+
+        if (error && !String(error.message).includes("duplicate key")) {
+          console.error("Insert payment failed:", error);
+        } else if (!error) {
+          await supabase.from("invoices").update({ status: "Paid" }).eq("id", invoice.id);
+          await supabase.from("activity").insert({
+            client_id: invoice.client_id,
+            type: "payment",
+            title: (client?.business || "A client") + " paid $" + amount.toFixed(2) + " via Stripe"
+              + (invoice.invoice_num ? " (Invoice #" + invoice.invoice_num + ")" : ""),
+          });
+        }
+      } else {
+        console.warn("checkout.session.completed with unknown invoice id — skipped:", invoiceId);
       }
     } else {
       console.warn("checkout.session.completed with no client_reference_id — skipped");

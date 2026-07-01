@@ -466,3 +466,98 @@ begin
     'line_items_raw',r.line_items_raw,'scope_raw',r.scope_raw
   );
 end $$;
+
+-- ============================================================================
+-- v9 — real multi-invoice support (a client can have many invoices)
+-- ============================================================================
+-- Before v9 there was exactly one invoice's worth of fields living directly on
+-- the clients row. That's now split: the fields on `clients` stay put and keep
+-- driving the Proposal/Agreement (the overall contract numbers), while actual
+-- billing documents — deposit, balance, monthly retainers, add-ons — each get
+-- their own row here, their own number, their own Stripe Payment Link, and
+-- their own paid/unpaid status.
+
+create table if not exists public.invoices (
+  id             uuid primary key default gen_random_uuid(),
+  client_id      uuid not null references public.clients(id) on delete cascade,
+  created_at     timestamptz not null default now(),
+  invoice_num    text default '',
+  doc_date       text default '',
+  kind           text default 'Deposit',
+  line_items_raw text default '',
+  subtotal       text default '',
+  tax_label      text default 'GST (5%)',
+  tax            text default '',
+  total          text default '',
+  pay_link       text default '',
+  status         text default 'Unpaid'
+);
+alter table public.invoices enable row level security;
+drop policy if exists invoices_authenticated_all on public.invoices;
+create policy invoices_authenticated_all on public.invoices
+  for all to authenticated using (true) with check (true);
+create index if not exists invoices_client_idx on public.invoices (client_id);
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='invoices') then
+    alter publication supabase_realtime add table public.invoices;
+  end if;
+end $$;
+
+-- one-time migration: turn each client's existing single invoice fields into
+-- their first invoice row, so nothing already in use is lost. Guarded by the
+-- "not exists" check so re-running this file never duplicates it.
+insert into public.invoices (client_id, invoice_num, doc_date, kind, line_items_raw, subtotal, tax_label, tax, total, pay_link, status)
+select id, invoice_num, doc_date, 'Deposit', line_items_raw, subtotal, tax_label, tax, total, pay_link, 'Unpaid'
+from public.clients c
+where (coalesce(c.total,'') <> '' or coalesce(c.line_items_raw,'') <> '')
+  and not exists (select 1 from public.invoices i where i.client_id = c.id);
+
+-- client-facing detail lookup: token gates which client, then the invoice
+-- must actually belong to that client (prevents guessing another invoice id)
+create or replace function public.get_invoice(p_token text, p_invoice_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype; inv public.invoices%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return null; end if;
+  select * into inv from public.invoices where id = p_invoice_id and client_id = r.id;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'id',inv.id,'invoice_num',inv.invoice_num,'doc_date',inv.doc_date,'kind',inv.kind,
+    'line_items_raw',inv.line_items_raw,'subtotal',inv.subtotal,'tax_label',inv.tax_label,'tax',inv.tax,
+    'total',inv.total,'pay_link',inv.pay_link,'status',inv.status,
+    'business',r.business,'contact_name',r.contact_name,'city',r.city,'email',r.email
+  );
+end $$;
+revoke all on function public.get_invoice(text,uuid) from public;
+grant execute on function public.get_invoice(text,uuid) to anon, authenticated;
+
+-- get_portal now also returns the lightweight list of a client's invoices,
+-- so the portal can show "Your invoices" instead of one bare Pay button
+create or replace function public.get_portal(p_token text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare r public.clients%rowtype;
+begin
+  select * into r from public.clients where portal_token = p_token;
+  if not found then return null; end if;
+  return jsonb_build_object(
+    'id',r.id,
+    'business',r.business,'contact_name',r.contact_name,'city',r.city,'email',r.email,'offer',r.offer,
+    'stage',r.stage,'goal',r.goal,'start_week',r.start_week,'doc_date',r.doc_date,
+    'intake_submitted',r.intake_submitted,
+    'signed_proposal',(r.signed_proposal is not null),
+    'signed_agreement',(r.signed_agreement is not null),
+    'proposal_num',r.proposal_num,'agreement_num',r.agreement_num,'invoice_num',r.invoice_num,
+    'total',r.total,'deposit',r.deposit,'balance',r.balance,'weeks',r.weeks,
+    'subtotal',r.subtotal,'tax_label',r.tax_label,'tax',r.tax,'pay_link',r.pay_link,
+    'gaps_raw',r.gaps_raw,'deliverables_raw',r.deliverables_raw,'timeline_raw',r.timeline_raw,
+    'line_items_raw',r.line_items_raw,'scope_raw',r.scope_raw,
+    'invoices',(select coalesce(jsonb_agg(jsonb_build_object(
+        'id',i.id,'invoice_num',i.invoice_num,'doc_date',i.doc_date,'kind',i.kind,
+        'total',i.total,'status',i.status
+      ) order by i.created_at desc),'[]'::jsonb)
+      from public.invoices i where i.client_id = r.id)
+  );
+end $$;

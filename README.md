@@ -308,3 +308,45 @@ Re-upload `portal.html` and upload the new `invoice.html`.
 
 ### Re-upload for v8
 `portal.html`, `invoice.html` — and re-run the SQL.
+
+---
+
+## v9 — real multi-invoice support
+
+v8 assumed one invoice per client — fine for a single deposit, not for a client who
+sticks around and racks up a second project, monthly retainers, or an add-on. v9 splits
+"the contract" (still the numbers on the Details tab, driving the Proposal/Agreement)
+from "the invoices" (now their own list, each with its own number, line items, Payment
+Link, and paid/unpaid status).
+
+> **Note:** this also changes how the Stripe webhook identifies a payment. Since v7 it
+> tagged the client's ID onto the Pay button; as of v9 it tags the **invoice's** ID
+> instead, so a payment marks the correct invoice as Paid rather than just the client.
+> `stripe-webhook.ts` was updated to match — re-deploy it along with this release.
+
+### One-time setup
+1. **Re-run `supabase_setup.sql`.** Adds the `invoices` table, the `get_invoice` RPC,
+   and updates `get_portal` to include each client's invoice list. It also does a
+   one-time migration that copies any client's existing single invoice into their first
+   row in the new table, so nothing already set up is lost.
+2. **Re-deploy `stripe-webhook.ts`** in Supabase (Edge Functions → stripe-webhook →
+   paste the updated file → Deploy) — it now looks up the invoice, not the client.
+3. **Re-upload** `index.html`, `portal.html`, `invoice.html`.
+
+### What's new
+- **Invoice tab is now a list** — every client can have multiple invoices. Click
+  **+ New invoice** to add one (it starts prefilled from the client's current pricing
+  as a convenience default, or leave it blank). Click any invoice to edit its number,
+  kind (Deposit / Balance / Retainer / Custom), line items, totals, its own Stripe
+  Payment Link, and mark it Paid/Unpaid by hand if it was paid outside Stripe.
+- **Per-invoice client links** — **⧉ Link** on any invoice row copies a direct
+  `invoice.html?t=…&inv=…` URL for that one invoice.
+- **Portal shows "Your invoices"** — a card listing every invoice for that client with
+  its own **View** button, instead of one generic Pay button.
+- **Stripe auto-marks the specific invoice Paid** — not just the client's most recent
+  payment. The invoice page shows a green "Paid — thank you" state and hides its Pay
+  button once that happens.
+
+### Re-upload for v9
+`index.html`, `portal.html`, `invoice.html`, re-run `supabase_setup.sql`, re-deploy
+`stripe-webhook.ts`.

@@ -339,6 +339,7 @@ table.inv td.it{color:var(--ink);font-weight:600;font-family:var(--font-d)}
 /* ============================ CONFIG / STATE ============================ */
 var SB_URL_K='ccd_sb_url', SB_KEY_K='ccd_sb_key';
 var sb=null, clients=[], current=null, currentTab='details', filter='', demo=false;
+var invoices=[], editingInvoice=null;
 var OFFERS=['Free Strategy Plan','Audit Sprint','Local Lead Engine','Local Dominance'];
 var STAGES=['Prospect','Proposal Sent','Signed','Deposit Paid','Intake','Kick-off','Active','Closed'];
 var STAGE_COLOR={
@@ -479,12 +480,12 @@ function renderMain(){
     '<div class="ch-meta">'+esc([c.contact_name,c.city?c.city+', Alberta':''].filter(Boolean).join(' · ')||'Unsaved')+'</div></div>'+
     '<div class="ch-actions">'+stageSelect(c)+
       ((c.id&&!demo)?'<button class="btn-ghost btn btn-sm" onclick="copyLink(\'portal\')">⧉ Portal link</button>':'')+
-      ((currentTab!=='details'&&currentTab!=='payments'&&currentTab!=='project')?'<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button>':'')+
+      ((currentTab!=='details'&&currentTab!=='payments'&&currentTab!=='project'&&currentTab!=='invoice')?'<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button>':'')+
       (currentTab==='details'?'<button class="btn btn-sm" onclick="saveClient()">Save</button>':'')+
       '<button class="btn-ghost btn btn-sm btn-danger" onclick="deleteClient()">Delete</button>'+
     '</div></div>'+
     '<div class="tabs">'+DOC_TABS.map(function(t){return '<button class="tab'+(currentTab===t[0]?' active':'')+'" onclick="setTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div></div>';
-  var inner=currentTab==='details'?detailsForm(c):(currentTab==='payments'?renderPayments(c):(currentTab==='project'?renderProject(c):docPreview(c)));
+  var inner=currentTab==='details'?detailsForm(c):(currentTab==='payments'?renderPayments(c):(currentTab==='project'?renderProject(c):(currentTab==='invoice'?renderInvoicesTab(c):docPreview(c))));
   m.innerHTML=head+'<div class="tab-body">'+inner+'</div>';
   m.scrollTop=0;
 }
@@ -492,7 +493,7 @@ function stageSelect(c){
   return '<select onchange="quickStage(this.value)" style="font-family:var(--font-m);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;padding:8px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink)">'+
     STAGES.map(function(s){return '<option'+(c.stage===s?' selected':'')+'>'+esc(s)+'</option>';}).join('')+'</select>';
 }
-function setTab(t){currentTab=t;if(t==='payments'){loadPayments().then(renderMain);}else if(t==='project'){loadTasks().then(renderMain);}else{renderMain();}}
+function setTab(t){currentTab=t;if(t==='payments'){loadPayments().then(renderMain);}else if(t==='project'){loadTasks().then(renderMain);}else if(t==='invoice'){editingInvoice=null;loadInvoices().then(renderMain);}else{renderMain();}}
 
 /* ---------- details form ---------- */
 function fld(label,key,c,o){o=o||{};var v=c[key]||'';
@@ -531,7 +532,6 @@ function docPreview(c){
   else if(currentTab==='agreement')inner=renderAgreement(c);
   else if(currentTab==='welcome')inner=renderWelcome(c);
   else if(currentTab==='intake')inner=renderIntake(c);
-  else if(currentTab==='invoice')inner=renderInvoice(c);
   else inner='';
   return '<div class="doc-toolbar"><span class="mono">Live preview · edits come from the Details tab</span>'+
     '<span><button class="btn-ghost btn btn-sm" onclick="window.print()">Print</button> '+
@@ -657,6 +657,7 @@ function renderInvoice(c){
 function exportPDF(){
   var node=$('docNode');if(!node){toast('Open a document tab first');return;}
   var c=current||{};var label=DOC_TABS.filter(function(t){return t[0]===currentTab;});label=label.length?label[0][1]:'Document';
+  if(currentTab==='invoice'&&editingInvoice&&editingInvoice.invoice_num)label+=' #'+editingInvoice.invoice_num;
   var name=(label+' - '+(c.business||'client')).replace(/[^a-z0-9 \-]/gi,'').trim()+'.pdf';
   toast('Building PDF...');
   html2pdf().set({margin:[10,10,10,10],filename:name,image:{type:'jpeg',quality:.98},
@@ -751,7 +752,7 @@ function renderPayments(c){
   }).join(''):'<div class="irow"><div class="ir-label">No payments logged yet.</div><div></div></div>';
   return '<div style="max-width:760px">'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">'+
-      metric('Invoice total',fmt(money(c.total)))+metric('Collected',fmt(paid))+metric('Outstanding',fmt(due<0?0:due))+'</div>'+
+      metric('Contract total',fmt(money(c.total)))+metric('Collected',fmt(paid))+metric('Outstanding',fmt(due<0?0:due))+'</div>'+
     '<div class="invest" style="margin-bottom:18px">'+rows+'</div>'+
     '<div class="card"><div class="mono" style="margin-bottom:12px">Log a payment</div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">'+
@@ -761,6 +762,95 @@ function renderPayments(c){
     '</div>'+
     '<input id="pay_note" placeholder="Note (optional)" style="width:100%;margin-top:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:var(--font-b)"/>'+
     '<button class="btn" style="margin-top:12px" onclick="addPayment()">+ Add payment</button></div></div>';
+}
+
+/* ============================ INVOICES (v9: many per client) ============================ */
+async function loadInvoices(){
+  invoices=[];
+  if(demo||!current||!current.id||!sb)return;
+  var r=await sb.from('invoices').select('*').eq('client_id',current.id).order('created_at',{ascending:false});
+  if(!r.error)invoices=r.data||[];
+}
+async function newInvoiceRow(){
+  if(demo){toast('Demo mode — save a real client to create invoices');return;}
+  if(!current||!current.id){toast('Save the client first');return;}
+  var rec={client_id:current.id,invoice_num:current.invoice_num||'',
+    doc_date:new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'}),
+    kind:'Deposit',line_items_raw:current.line_items_raw||'',subtotal:current.subtotal||'',
+    tax_label:current.tax_label||'GST (5%)',tax:current.tax||'',total:current.total||'',
+    pay_link:current.pay_link||'',status:'Unpaid'};
+  var r=await sb.from('invoices').insert(rec).select().single();
+  if(r.error){toast('Could not create invoice: '+r.error.message);return;}
+  await loadInvoices();editingInvoice=invoices.filter(function(i){return i.id===r.data.id;})[0]||r.data;
+  renderMain();toast('Invoice created — edit and Save');
+}
+function openInvoiceRow(id){editingInvoice=invoices.filter(function(i){return i.id===id;})[0]||null;renderMain();}
+function closeInvoiceRow(){editingInvoice=null;renderMain();}
+async function saveInvoiceRow(){
+  if(!editingInvoice)return;
+  var rec={invoice_num:val('inv_invoice_num'),doc_date:val('inv_doc_date'),kind:val('inv_kind'),status:val('inv_status'),
+    line_items_raw:val('inv_line_items_raw'),subtotal:val('inv_subtotal'),tax_label:val('inv_tax_label'),
+    tax:val('inv_tax'),total:val('inv_total'),pay_link:val('inv_pay_link')};
+  var r=await sb.from('invoices').update(rec).eq('id',editingInvoice.id);
+  if(r.error){toast('Save failed: '+r.error.message);return;}
+  toast('Invoice saved');await loadInvoices();
+  editingInvoice=invoices.filter(function(i){return i.id===editingInvoice.id;})[0]||null;
+  renderMain();
+}
+async function delInvoiceRow(id){
+  if(!confirm('Delete this invoice?'))return;
+  var r=await sb.from('invoices').delete().eq('id',id);
+  if(r.error){toast('Delete failed');return;}
+  if(editingInvoice&&editingInvoice.id===id)editingInvoice=null;
+  await loadInvoices();renderMain();
+}
+async function copyInvoiceLink(id){
+  var t=await ensureToken();if(!t)return;
+  var url=siteBase()+'invoice.html?t='+encodeURIComponent(t)+'&inv='+encodeURIComponent(id);
+  try{await navigator.clipboard.writeText(url);toast('Invoice link copied');}
+  catch(e){prompt('Copy this link:',url);}
+}
+function invoiceDoc(inv,c){
+  var merged=Object.assign({},c,{id:inv.id,invoice_num:inv.invoice_num,doc_date:inv.doc_date,subtotal:inv.subtotal,
+    tax_label:inv.tax_label,tax:inv.tax,total:inv.total,pay_link:inv.pay_link,line_items_raw:inv.line_items_raw});
+  return renderInvoice(merged);
+}
+function renderInvoicesTab(c){
+  if(demo)return '<p class="note">Invoices need a saved client. Connect Supabase and add a real client.</p>';
+  if(!c.id)return '<p class="note">Save this client first, then you can create invoices here.</p>';
+  if(editingInvoice)return renderInvoiceEditor(c,editingInvoice);
+  var rows=invoices.length?invoices.map(function(i){
+    return '<div class="irow"><div class="ir-label">'+esc(i.invoice_num?'#'+i.invoice_num:'(no number)')+' · '+esc(i.kind||'')+' · '+esc(i.doc_date||'')+
+      (i.status==='Paid'?' · <span style="color:#1a7f37">Paid</span>':' · <span style="color:var(--muted)">Unpaid</span>')+'</div>'+
+      '<div class="v" style="display:flex;gap:10px;align-items:center">'+fmt(money(i.total))+
+      '<button class="btn-ghost btn btn-sm" onclick="openInvoiceRow(\''+i.id+'\')">View / Edit</button>'+
+      '<button class="btn-ghost btn btn-sm" onclick="copyInvoiceLink(\''+i.id+'\')">⧉ Link</button>'+
+      '<button class="btn-ghost btn btn-sm btn-danger" onclick="delInvoiceRow(\''+i.id+'\')">×</button></div></div>';
+  }).join(''):'<div class="irow"><div class="ir-label">No invoices yet.</div><div></div></div>';
+  return '<div style="max-width:820px"><div class="invest" style="margin-bottom:18px">'+rows+'</div>'+
+    '<button class="btn" onclick="newInvoiceRow()">+ New invoice</button></div>';
+}
+function renderInvoiceEditor(c,inv){
+  function f(label,key,ph,full){return '<div class="field'+(full?' full':'')+'"><label>'+esc(label)+'</label><input id="inv_'+key+'" value="'+esc(inv[key]||'')+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+'/></div>';}
+  var kinds=['Deposit','Balance','Retainer','Custom'];
+  var form='<div class="card" style="margin-bottom:18px">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'+
+    f('Invoice #','invoice_num')+f('Date','doc_date')+
+    '<div class="field"><label>Kind</label><select id="inv_kind">'+kinds.map(function(k){return '<option'+(inv.kind===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Status</label><select id="inv_status"><option'+(inv.status!=='Paid'?' selected':'')+'>Unpaid</option><option'+(inv.status==='Paid'?' selected':'')+'>Paid</option></select></div>'+
+    '</div>'+
+    '<div class="field full" style="margin-top:10px"><label>Line items — "Label | Value" per line</label><textarea id="inv_line_items_raw" style="min-height:90px">'+esc(inv.line_items_raw||'')+'</textarea></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px">'+
+    f('Subtotal','subtotal','$750')+f('Tax label','tax_label')+f('Tax','tax','$37.50')+f('Total','total','$787.50')+
+    '</div>'+
+    '<div style="margin-top:10px">'+f('Payment link (Stripe Payment Link for this invoice)','pay_link','https://buy.stripe.com/...',true)+'</div>'+
+    '<div class="save-bar"><button class="btn-ghost btn" onclick="closeInvoiceRow()">← Back to list</button><button class="btn" onclick="saveInvoiceRow()">Save invoice</button></div>'+
+    '</div>';
+  var preview='<div class="doc-toolbar"><span class="mono">Live preview</span>'+
+    '<span><button class="btn-ghost btn btn-sm" onclick="window.print()">Print</button> '+
+    '<button class="btn btn-sm" onclick="exportPDF()">↓ Export PDF</button></span></div>'+
+    '<div class="doc-scroll"><div class="doc" id="docNode">'+invoiceDoc(inv,c)+'</div></div>';
+  return form+preview;
 }
 
 var allPaymentsTotal=0, revSeries={};

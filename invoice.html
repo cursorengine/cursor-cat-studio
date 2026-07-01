@@ -6,30 +6,33 @@ function pipes(raw){return lines(raw).map(function(l){var i=l.indexOf('|');retur
 function payLink(url,id){if(!url)return '';return url+(url.indexOf('?')>-1?'&':'?')+'client_reference_id='+encodeURIComponent(id||'');}
 var sb=(window.CCD&&window.CCD.url)?window.supabase.createClient(window.CCD.url,window.CCD.key):null;
 var TOKEN=new URLSearchParams(location.search).get('t')||'';
+var INV=new URLSearchParams(location.search).get('inv')||'';
 function gel(id){return document.getElementById(id);}
 function fail(m){gel('root').innerHTML='<div class="card center" style="padding:46px"><h2 style="margin-bottom:8px">Link not found</h2><p>'+esc(m||'This invoice link is not valid. Please use the link we emailed you, or contact brent@cursorcat.digital.')+'</p></div>';}
-function docInvoice(c){
-  var li=pipes(c.line_items_raw);
-  var h='<div class="eyebrow">Invoice'+(c.invoice_num?' #'+esc(c.invoice_num):'')+'</div>'+
-    '<h1 style="font-size:1.8rem;margin-bottom:18px">'+esc(c.doc_date||'')+'</h1>'+
-    '<div class="card"><div class="eyebrow">Bill to</div><p style="margin-bottom:2px"><strong style="font-family:var(--font-d)">'+esc(c.business||'')+'</strong></p>'+
-    (c.contact_name?'<p style="font-size:.88rem">'+esc(c.contact_name)+'</p>':'')+
-    (c.email?'<p style="font-size:.88rem">'+esc(c.email)+'</p>':'')+
-    (c.city?'<p style="font-size:.88rem">'+esc(c.city)+', Alberta</p>':'')+'</div>';
+function docInvoice(d){
+  var li=pipes(d.line_items_raw);
+  var h='<div class="eyebrow">Invoice'+(d.invoice_num?' #'+esc(d.invoice_num):'')+(d.kind?' · '+esc(d.kind):'')+'</div>'+
+    '<h1 style="font-size:1.8rem;margin-bottom:6px">'+esc(d.doc_date||'')+'</h1>'+
+    (d.status==='Paid'?'<p style="color:#1a7f37;font-family:var(--font-m);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">✓ Paid — thank you</p>':'<div style="margin-bottom:14px"></div>')+
+    '<div class="card"><div class="eyebrow">Bill to</div><p style="margin-bottom:2px"><strong style="font-family:var(--font-d)">'+esc(d.business||'')+'</strong></p>'+
+    (d.contact_name?'<p style="font-size:.88rem">'+esc(d.contact_name)+'</p>':'')+
+    (d.email?'<p style="font-size:.88rem">'+esc(d.email)+'</p>':'')+
+    (d.city?'<p style="font-size:.88rem">'+esc(d.city)+', Alberta</p>':'')+'</div>';
   h+='<div class="card"><div class="eyebrow">Line items</div>'+
     (li.length?li.map(function(x){return '<p style="display:flex;justify-content:space-between;margin-bottom:6px"><span>'+esc(x[0])+'</span><strong style="color:var(--ink)">'+esc(x[1])+'</strong></p>';}).join(''):'<p class="note">—</p>')+
     '<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">'+
-    '<p style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Subtotal</span><span>'+esc(c.subtotal||c.total||'')+'</span></p>'+
-    (c.tax?'<p style="display:flex;justify-content:space-between;margin-bottom:4px"><span>'+esc(c.tax_label||'Tax')+'</span><span>'+esc(c.tax)+'</span></p>':'')+
-    '<p style="display:flex;justify-content:space-between;border-top:2px solid var(--ink);margin-top:8px;padding-top:10px"><strong>Total due</strong><strong class="chrome-text" style="font-family:var(--font-d);font-size:1.3rem">'+esc(c.total||c.subtotal||'')+'</strong></p></div></div>';
-  h+='<div class="dark"><h3>How to pay</h3><p style="color:#fff;font-family:var(--font-m);font-size:.82rem;line-height:2.1">Interac e-Transfer &nbsp;›&nbsp; brent@cursorcat.digital<br>Credit / Debit &nbsp;›&nbsp; pay via the button below</p></div>';
-  if(c.pay_link){h+='<a class="btn full" style="margin-top:14px" href="'+esc(payLink(c.pay_link,c.id))+'" target="_blank" rel="noopener">Pay this invoice online →</a>';}
-  if(c.deposit){h+='<p class="note" style="margin-top:18px"><strong>Payment schedule:</strong> '+esc(c.deposit)+' deposit due to start. Balance on delivery.</p>';}
+    '<p style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Subtotal</span><span>'+esc(d.subtotal||d.total||'')+'</span></p>'+
+    (d.tax?'<p style="display:flex;justify-content:space-between;margin-bottom:4px"><span>'+esc(d.tax_label||'Tax')+'</span><span>'+esc(d.tax)+'</span></p>':'')+
+    '<p style="display:flex;justify-content:space-between;border-top:2px solid var(--ink);margin-top:8px;padding-top:10px"><strong>Total due</strong><strong class="chrome-text" style="font-family:var(--font-d);font-size:1.3rem">'+esc(d.total||d.subtotal||'')+'</strong></p></div></div>';
+  if(d.status!=='Paid'){
+    h+='<div class="dark"><h3>How to pay</h3><p style="color:#fff;font-family:var(--font-m);font-size:.82rem;line-height:2.1">Interac e-Transfer &nbsp;›&nbsp; brent@cursorcat.digital<br>Credit / Debit &nbsp;›&nbsp; pay via the button below</p></div>';
+    if(d.pay_link){h+='<a class="btn full" style="margin-top:14px" href="'+esc(payLink(d.pay_link,d.id))+'" target="_blank" rel="noopener">Pay this invoice online →</a>';}
+  }
   h+='<div class="card center" style="margin-top:18px"><a class="btn ghost" href="portal.html?t='+encodeURIComponent(TOKEN)+'">← Back to your portal</a></div>';
   return h;
 }
 function render(d){gel('root').innerHTML=docInvoice(d);}
 if(!sb){fail('This invoice is not configured yet.');}
-else if(!TOKEN){fail();}
-else{sb.rpc('get_portal',{p_token:TOKEN}).then(function(res){if(res.error||!res.data)fail();else{render(res.data);sb.rpc('log_view',{p_token:TOKEN,p_what:'invoice'});}});}
+else if(!TOKEN||!INV){fail();}
+else{sb.rpc('get_invoice',{p_token:TOKEN,p_invoice_id:INV}).then(function(res){if(res.error||!res.data)fail();else{render(res.data);sb.rpc('log_view',{p_token:TOKEN,p_what:'invoice'});}});}
 </script></body></html>
